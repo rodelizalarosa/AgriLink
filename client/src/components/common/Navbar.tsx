@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Menu, X, Leaf } from 'lucide-react';
+import { ShoppingCart, Menu, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { NavbarProps } from '../../types';
 
@@ -13,13 +13,11 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType }) => {
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <div className="bg-gradient-to-br from-[#4CAF50] to-[#66BB6A] p-3 rounded-2xl shadow-lg transform hover:scale-105 transition-all">
-              <Leaf className="w-7 h-7 text-white" />
-            </div>
-            <div className="ml-3">
-              <h1 className="text-2xl font-bold text-[#2E7D32] tracking-tight">AgriLink</h1>
-              <p className="text-xs text-[#8D6E63] font-medium">Farm to Table</p>
-            </div>
+            <img 
+              src="/src/assets/logo/AgriLinkGREEN.png" 
+              alt="AgriLink Logo" 
+              className="w-16 h-16 object-contain transform hover:scale-105 transition-all"
+            />
           </Link>
 
           {/* Desktop Navigation */}

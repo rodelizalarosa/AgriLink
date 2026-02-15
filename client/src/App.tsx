@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 
 // Components
 import Navbar from './components/common/Navbar';
+import RouteTransition from './components/ui/RouteTransition';
 import LandingPage from './components/pages/LandingPage';
 import MarketplacePage from './components/pages/MarketplacePage';
 import FarmerDashboard from './components/pages/FarmerDashboard';
@@ -112,16 +113,18 @@ const AppContent: React.FC = () => {
         setUserType={setUserType}
       />
       
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/marketplace" element={<MarketplacePage />} />
-        <Route path="/farmer-dashboard" element={<FarmerDashboard />} />
-        <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
-        <Route path="/product-upload" element={<ProductUploadPage />} />
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-      </Routes>
+      <RouteTransition>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/marketplace" element={<MarketplacePage />} />
+          <Route path="/farmer-dashboard" element={<FarmerDashboard />} />
+          <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
+          <Route path="/product-upload" element={<ProductUploadPage />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+        </Routes>
+      </RouteTransition>
       
       
       {/* Footer */}
@@ -130,8 +133,11 @@ const AppContent: React.FC = () => {
           <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
             <div>
               <div className="flex items-center justify-center md:justify-start mb-4">
-                <Leaf className="w-8 h-8 mr-2" />
-                <h3 className="text-2xl font-bold">AgriLink</h3>
+                <img 
+                  src="/src/assets/logo/AgriLinkWHITE.png" 
+                  alt="AgriLink Logo" 
+                  className="w-24 h-24 object-contain"
+                />
               </div>
               <p className="text-green-100">Connecting farmers and communities for fresh, sustainable produce.</p>
             </div>
