@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, Leaf, ArrowRight, User, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { RegisterFormData } from '../../types';
+import type { RegisterFormData, RegisterFormErrors } from '../../types';
+import { supabase } from '../../services/supabase-client';
+import { validateForm } from '../../server-side/handling/validation';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,35 +16,72 @@ export const RegisterPage: React.FC = () => {
     userType: 'buyer',
     agreeToTerms: false,
   });
-  
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
-  const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState<RegisterFormErrors>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const newErrors: Partial<RegisterFormData> = {};
-    
-    if (!formData.firstName) newErrors.firstName = 'First name is required' as any;
-    if (!formData.lastName) newErrors.lastName = 'Last name is required' as any;
-    if (!formData.email) newErrors.email = 'Email is required' as any;
-    if (!formData.password) newErrors.password = 'Password is required' as any;
-    if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm your password' as any;
-    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match' as any;
-    if (!formData.agreeToTerms) newErrors.agreeToTerms = 'You must agree to the terms' as any;
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+
+    const clientErrors = validateForm(formData);
+    if (Object.keys(clientErrors).length > 0) {
+      setErrors(clientErrors);
       return;
     }
-    
-    console.log('Registration attempt:', formData);
-    navigate('/marketplace');
+
+    setErrors({});
+
+   try {
+  const { data, error } = await supabase.auth.signUp({
+    email: formData.email,
+    password: formData.password,
+    options: {
+      emailRedirectTo: `${window.location.origin}/login`,
+      data: {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+      },
+    },
+  });
+
+  if (error) {
+    console.error("Signup error:", error);
+    setErrors({ email: "Registration failed, please try again" });
+    return;
+  }
+
+  if (!error) {
+      navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+    }
+
+
+} catch (err) {
+  console.error("Unexpected error:", err);
+  setErrors({ email: "Registration failed, please try again" });
+}
+
   };
 
+      const handleEmailChange = (value: string) => {
+        const trimmed = value.trim();
+        setFormData({ ...formData, email: trimmed });
+
+        if (trimmed) {
+          setErrors((prev) => ({ ...prev, email: undefined })); // Clear error immediately
+        } else {
+          setErrors((prev) => ({ ...prev, email: 'Email is required' }));
+        }
+
+        // Optional: Validate format in real-time
+        if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+          setErrors((prev) => ({ ...prev, email: 'Please input a valid email format' }));
+        }
+      };
+
+
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F9FBE7] via-white to-[#E8F5E9] flex items-center justify-center p-4">
+  <div className="min-h-screen bg-gradient-to-br from-[#F9FBE7] via-white to-[#E8F5E9] flex items-center justify-center p-4">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-72 h-72 bg-[#4CAF50] rounded-full opacity-5 blur-3xl animate-float"></div>
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#FFC107] rounded-full opacity-5 blur-3xl animate-float-delayed"></div>
@@ -125,7 +164,9 @@ export const RegisterPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* First & Last Name */}
               <div className="grid grid-cols-2 gap-4">
+                {/* First Name */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">First Name</label>
                   <div className="relative">
@@ -134,7 +175,15 @@ export const RegisterPage: React.FC = () => {
                       type="text"
                       placeholder="John"
                       value={formData.firstName}
-                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData({ ...formData, firstName: value });
+
+                      // Clear error immediately if user typed something
+                      if (value.trim()) {
+                        setErrors((prev) => ({ ...prev, firstName: undefined }));
+                      }
+                    }}
                       className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
                         errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
                       }`}
@@ -142,6 +191,8 @@ export const RegisterPage: React.FC = () => {
                   </div>
                   {errors.firstName && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.firstName}</p>}
                 </div>
+
+                {/* Last Name */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Last Name</label>
                   <div className="relative">
@@ -150,7 +201,15 @@ export const RegisterPage: React.FC = () => {
                       type="text"
                       placeholder="Doe"
                       value={formData.lastName}
-                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFormData({ ...formData, lastName: value });
+
+                        // Clear error immediately if user typed something
+                        if (value.trim()) {
+                          setErrors((prev) => ({ ...prev, lastName: undefined }));
+                        }
+                      }}
                       className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
                         errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
                       }`}
@@ -160,6 +219,7 @@ export const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Email */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
                 <div className="relative">
@@ -168,15 +228,17 @@ export const RegisterPage: React.FC = () => {
                     type="email"
                     placeholder="your.email@example.com"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
+                                        errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
                     }`}
                   />
                 </div>
-                {errors.email && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.email}</p>}
+                 {errors.email && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.email}</p>}
+
               </div>
 
+              {/* User Type */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">I am a...</label>
                 <div className="grid grid-cols-2 gap-4">
@@ -205,6 +267,7 @@ export const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Password & Confirm Password */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Password</label>
                 <div className="relative">
@@ -213,7 +276,15 @@ export const RegisterPage: React.FC = () => {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData({ ...formData, password: value });
+
+                      if (value.trim()) {
+                        setErrors((prev) => ({ ...prev, password: undefined }));
+                      }
+                    }}
+
                     className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
                       errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
                     }`}
@@ -237,7 +308,15 @@ export const RegisterPage: React.FC = () => {
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData({ ...formData, confirmPassword: value });
+
+                      if (value.trim()) {
+                        setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                      }
+                    }}
+
                     className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
                       errors.confirmPassword ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
                     }`}
@@ -253,25 +332,46 @@ export const RegisterPage: React.FC = () => {
                 {errors.confirmPassword && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.confirmPassword}</p>}
               </div>
 
+              {/* Agree to terms */}
+              <div>
               <div className="flex items-start space-x-2">
                 <input
                   type="checkbox"
                   checked={formData.agreeToTerms}
-                  onChange={(e) => setFormData({ ...formData, agreeToTerms: e.target.checked })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, agreeToTerms: e.target.checked });
+                    if (e.target.checked)
+                      setErrors((prev) => ({ ...prev, agreeToTerms: undefined }));
+                  }}
                   className="w-4 h-4 text-[#4CAF50] border-gray-300 rounded focus:ring-[#4CAF50] mt-1"
                 />
+
                 <label className="text-sm text-gray-700">
                   I agree to the{' '}
-                  <button type="button" className="font-bold text-[#4CAF50] hover:text-[#45A049] transition-colors">
+                  <button
+                    type="button"
+                    className="font-bold text-[#4CAF50] hover:text-[#45A049] transition-colors"
+                  >
                     Terms of Service
                   </button>{' '}
                   and{' '}
-                  <button type="button" className="font-bold text-[#4CAF50] hover:text-[#45A049] transition-colors">
+                  <button
+                    type="button"
+                    className="font-bold text-[#4CAF50] hover:text-[#45A049] transition-colors"
+                  >
                     Privacy Policy
                   </button>
                 </label>
               </div>
-              {errors.agreeToTerms && <p className="text-red-500 text-sm font-semibold">{errors.agreeToTerms}</p>}
+
+              {/* Error directly attached */}
+              {errors.agreeToTerms && (
+                <p className="text-red-500 text-sm font-semibold mt-1">
+                  {errors.agreeToTerms}
+                </p>
+              )}
+            </div>
+
 
               <button
                 type="submit"

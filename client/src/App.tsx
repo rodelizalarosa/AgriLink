@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Leaf } from 'lucide-react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { VerifyEmailPage } from '../src/components/pages/ConfirmEmail';
+import { ProtectedRoute } from '../src/components/ProtectedRoute'
+
 
 // Components
 import Navbar from './components/common/Navbar';
@@ -115,12 +118,43 @@ const AppContent: React.FC = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
-        <Route path="/farmer-dashboard" element={<FarmerDashboard />} />
-        <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
-        <Route path="/product-upload" element={<ProductUploadPage />} />
+
+        <Route path="/farmer-dashboard" element={
+          <ProtectedRoute allowedRoles={[2]}>
+            <FarmerDashboard />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/buyer-dashboard" element={
+          <ProtectedRoute allowedRoles={[1]}>
+            <BuyerDashboard />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/product-upload" element={
+          <ProtectedRoute allowedRoles={[2]}>
+            <ProductUploadPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/lgu-dashboard" element={
+        <ProtectedRoute allowedRoles={[3]}>
+          {/* <LguDashboard /> */} 
+          <BuyerDashboard />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/brgy-dashboard" element={
+        <ProtectedRoute allowedRoles={[4]}>
+          {/* <BrgyDashboard /> */}
+          <BuyerDashboard />
+        </ProtectedRoute>
+      } />
+
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
       </Routes>
       
       
