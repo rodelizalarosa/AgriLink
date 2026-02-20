@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, Leaf, ArrowRight, User, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, User, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { RegisterFormData } from '../../types';
 
@@ -50,16 +50,11 @@ export const RegisterPage: React.FC = () => {
 
       <div className="relative w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
         <div className="hidden lg:block space-y-8 animate-slideInLeft">
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-[#4CAF50] to-[#66BB6A] p-4 rounded-2xl shadow-lg">
-              <Leaf className="w-10 h-10 text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-black text-[#2E7D32]">AgriLink</h1>
-              <p className="text-[#8D6E63] font-semibold">Farm to Table</p>
-            </div>
-          </div>
-
+          <img 
+            src="/src/assets/logo/AgriLinkGREEN.png" 
+            alt="AgriLink Logo" 
+            className="w-56 h-56 object-contain"
+          />
           <div className="space-y-4">
             <h2 className="text-4xl font-black text-gray-900 leading-tight">
               Join Our
@@ -110,13 +105,11 @@ export const RegisterPage: React.FC = () => {
         <div className="animate-slideInRight">
           <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border-2 border-gray-100">
             <div className="lg:hidden flex items-center justify-center space-x-3 mb-8">
-              <div className="bg-gradient-to-br from-[#4CAF50] to-[#66BB6A] p-3 rounded-2xl shadow-lg">
-                <Leaf className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-black text-[#2E7D32]">AgriLink</h1>
-                <p className="text-xs text-[#8D6E63] font-semibold">Farm to Table</p>
-              </div>
+              <img 
+                src="/src/assets/logo/AgriLinkGREEN.png" 
+                alt="AgriLink Logo" 
+                className="w-48 h-48 object-contain"
+              />
             </div>
 
             <div className="mb-8">
@@ -183,7 +176,7 @@ export const RegisterPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, userType: 'buyer' })}
-                    className={`py-3 px-4 rounded-xl font-bold transition-all ${
+                    className={`py-3 px-4 rounded-xl font-bold cursor-pointer transition-all ${
                       formData.userType === 'buyer'
                         ? 'bg-[#4CAF50] text-white shadow-lg'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -194,7 +187,7 @@ export const RegisterPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, userType: 'farmer' })}
-                    className={`py-3 px-4 rounded-xl font-bold transition-all ${
+                    className={`py-3 px-4 rounded-xl font-bold cursor-pointer transition-all ${
                       formData.userType === 'farmer'
                         ? 'bg-[#4CAF50] text-white shadow-lg'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -221,7 +214,7 @@ export const RegisterPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-600"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -245,9 +238,9 @@ export const RegisterPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-600"
                   >
-                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5 cursor-pointer" /> : <Eye className="w-5 h-5 cursor-pointer" />}
                   </button>
                 </div>
                 {errors.confirmPassword && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.confirmPassword}</p>}
@@ -262,11 +255,11 @@ export const RegisterPage: React.FC = () => {
                 />
                 <label className="text-sm text-gray-700">
                   I agree to the{' '}
-                  <button type="button" className="font-bold text-[#4CAF50] hover:text-[#45A049] transition-colors">
+                  <button type="button" className="font-bold text-[#4CAF50] hover:text-[#45A049] cursor-pointer transition-colors">
                     Terms of Service
                   </button>{' '}
                   and{' '}
-                  <button type="button" className="font-bold text-[#4CAF50] hover:text-[#45A049] transition-colors">
+                  <button type="button" className="font-bold text-[#4CAF50] hover:text-[#45A049] cursor-pointer transition-colors">
                     Privacy Policy
                   </button>
                 </label>
@@ -288,7 +281,7 @@ export const RegisterPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/login')}
-                  className="font-bold text-[#4CAF50] hover:text-[#45A049] transition-colors"
+                  className="font-bold text-[#4CAF50] hover:text-[#45A049] cursor-pointer transition-colors"
                 >
                   Sign In
                 </button>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Leaf, Sun, Sprout, Users, CheckCircle } from 'lucide-react';
+import { Search, Sun, Sprout, Users, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { LandingPageProps } from '../../types';
 import { sampleProducts } from '../../data';
@@ -115,8 +115,12 @@ const LandingPage: React.FC<LandingPageProps> = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center p-8 rounded-2xl hover:bg-[#F9FBE7] transition-colors">
-              <div className="bg-[#4CAF50] w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Leaf className="w-8 h-8 text-white" />
+              <div className="bg-[#4CAF50] w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 p-2">
+                <img 
+                  src="/src/assets/logo/AgriLinkWHITE.png" 
+                  alt="AgriLink Logo" 
+                  className="w-full h-full object-contain"
+                />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">100% Organic</h3>
               <p className="text-gray-600">All products are certified organic and grown without harmful chemicals</p>

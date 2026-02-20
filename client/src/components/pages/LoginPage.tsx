@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, Leaf, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { LoginFormData } from '../../types';
 
@@ -39,15 +39,11 @@ export const LoginPage: React.FC = () => {
 
       <div className="relative w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
         <div className="hidden lg:block space-y-8 animate-slideInLeft">
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-[#4CAF50] to-[#66BB6A] p-4 rounded-2xl shadow-lg">
-              <Leaf className="w-10 h-10 text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-black text-[#2E7D32]">AgriLink</h1>
-              <p className="text-[#8D6E63] font-semibold">Farm to Table</p>
-            </div>
-          </div>
+          <img 
+            src="/src/assets/logo/AgriLinkGREEN.png" 
+            alt="AgriLink Logo" 
+            className="w-56 h-56 object-contain"
+          />
 
           <div className="space-y-4">
             <h2 className="text-4xl font-black text-gray-900 leading-tight">
@@ -72,13 +68,11 @@ export const LoginPage: React.FC = () => {
         <div className="animate-slideInRight">
           <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border-2 border-gray-100">
             <div className="lg:hidden flex items-center justify-center space-x-3 mb-8">
-              <div className="bg-gradient-to-br from-[#4CAF50] to-[#66BB6A] p-3 rounded-2xl shadow-lg">
-                <Leaf className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-black text-[#2E7D32]">AgriLink</h1>
-                <p className="text-xs text-[#8D6E63] font-semibold">Farm to Table</p>
-              </div>
+              <img 
+                src="/src/assets/logo/AgriLinkGREEN.png" 
+                alt="AgriLink Logo" 
+                className="w-48 h-48 object-contain"
+              />
             </div>
 
             <div className="mb-8">
