@@ -34,7 +34,7 @@ export interface NavbarProps {
 }
 
 export interface SidebarProps {
-  userType: 'farmer' | 'admin';
+  userType: string;
   setUserType: (type: string) => void;
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;

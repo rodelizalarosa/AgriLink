@@ -19,17 +19,17 @@ import type { SidebarProps } from '../../types';
 // ─── Nav config ─────────────────────────────────────────────────────────────
 
 const farmerNav = [
-  { label: 'Dashboard',    icon: LayoutDashboard, to: '/farmer-dashboard' },
-  { label: 'My Listings',  icon: Package,         to: '/marketplace'      },
-  { label: 'Add Product',  icon: Plus,            to: '/product-upload'   },
-  { label: 'Orders',       icon: ShoppingCart,    to: '/buyer-dashboard'  },
+  { label: 'Dashboard', icon: LayoutDashboard, to: '/farmer-dashboard' },
+  { label: 'My Listings', icon: Package, to: '/marketplace' },
+  { label: 'Add Product', icon: Plus, to: '/product-upload' },
+  { label: 'Orders', icon: ShoppingCart, to: '/buyer-dashboard' },
 ];
 
 const adminNav = [
-  { label: 'Dashboard',         icon: LayoutDashboard, to: '/admin'      },
-  { label: 'User Management',   icon: Users,           to: '/admin'      },
-  { label: 'Pending Approvals', icon: ClipboardList,   to: '/admin'      },
-  { label: 'Reports',           icon: BarChart2,       to: '/admin'      },
+  { label: 'Dashboard', icon: LayoutDashboard, to: '/admin' },
+  { label: 'User Management', icon: Users, to: '/admin' },
+  { label: 'Pending Approvals', icon: ClipboardList, to: '/admin' },
+  { label: 'Reports', icon: BarChart2, to: '/admin' },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -40,11 +40,12 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isFarmer = userType === 'farmer';
-  const navItems = isFarmer ? farmerNav : adminNav;
+  const isAdmin = userType === 'admin';
+  const navItems = isFarmer ? farmerNav : (isAdmin ? adminNav : []);
 
-  const roleLabel = isFarmer ? 'Farmer' : 'Admin';
-  const roleColor = isFarmer ? '#5ba409' : '#7C3AED';
-  const roleBg    = isFarmer ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800';
+  const roleLabel = isFarmer ? 'Farmer' : (isAdmin ? 'Admin' : 'User');
+  const roleColor = isFarmer ? '#5ba409' : (isAdmin ? '#7C3AED' : '#9CA3AF');
+  const roleBg = isFarmer ? 'bg-green-100 text-green-800' : (isAdmin ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800');
 
   const handleLogout = () => {
     setUserType('buyer');
@@ -64,9 +65,8 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
           <img
             src="/src/assets/logo/AgriLinkGREEN.png"
             alt="AgriLink"
-            className={`object-contain flex-shrink-0 transition-all duration-300 ${
-              collapsed ? 'w-12 h-12' : 'w-10 h-10'
-            }`}
+            className={`object-contain flex-shrink-0 transition-all duration-300 ${collapsed ? 'w-12 h-12' : 'w-10 h-10'
+              }`}
           />
           {!collapsed && (
             <span className="text-xl font-black text-[#2E7D32] whitespace-nowrap">
@@ -225,7 +225,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
         >
           {collapsed
             ? <ChevronRight className="w-3.5 h-3.5" />
-            : <ChevronLeft  className="w-3.5 h-3.5" />}
+            : <ChevronLeft className="w-3.5 h-3.5" />}
         </button>
       </aside>
     </>
