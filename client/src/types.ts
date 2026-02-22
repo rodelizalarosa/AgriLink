@@ -31,6 +31,13 @@ export interface NavbarProps {
   setUserType: (type: string) => void;
 }
 
+export interface SidebarProps {
+  userType: 'farmer' | 'admin';
+  setUserType: (type: string) => void;
+  collapsed: boolean;
+  setCollapsed: (v: boolean) => void;
+}
+
 export interface LandingPageProps {
 }
 
