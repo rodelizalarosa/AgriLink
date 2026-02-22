@@ -21,7 +21,7 @@ const BuyerDashboard: React.FC = () => {
             title="Cart Items"
             value="5"
             subtitle="₱1,250 total"
-            color="#4CAF50"
+            color="#5ba409"
           />
           <DashboardCard
             icon={Package}
@@ -44,7 +44,7 @@ const BuyerDashboard: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-6">My Orders</h2>
           <div className="space-y-4">
             {buyerOrders.map((order) => (
-              <div key={order.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border-2 border-gray-100 rounded-xl hover:border-[#4CAF50] transition-colors">
+              <div key={order.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border-2 border-gray-100 rounded-xl hover:border-[#5ba409] transition-colors">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
                     <span className="font-bold text-gray-900">{order.id}</span>
@@ -62,8 +62,8 @@ const BuyerDashboard: React.FC = () => {
                   </p>
                 </div>
                 <div className="mt-4 md:mt-0 flex items-center space-x-4">
-                  <span className="text-2xl font-bold text-[#4CAF50]">{order.amount}</span>
-                  <button className="bg-[#4CAF50] hover:bg-[#45A049] text-white px-4 py-2 rounded-lg font-semibold">
+                  <span className="text-2xl font-bold text-[#5ba409]">{order.amount}</span>
+                  <button className="bg-[#5ba409] hover:bg-[#4d8f08] text-white px-4 py-2 rounded-lg font-semibold">
                     Track Order
                   </button>
                 </div>

@@ -18,7 +18,7 @@ const FarmerDashboard: React.FC<FarmerDashboardProps> = () => {
           </div>
           <button
             onClick={() => navigate('/product-upload')}
-            className="bg-[#4CAF50] hover:bg-[#45A049] text-white px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center space-x-2"
+            className="bg-[#5ba409] hover:bg-[#4d8f08] text-white px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center space-x-2"
           >
             <Plus className="w-5 h-5" />
             <span>Add New Product</span>
@@ -32,7 +32,7 @@ const FarmerDashboard: React.FC<FarmerDashboardProps> = () => {
             title="Active Listings"
             value="12"
             subtitle="4 low on stock"
-            color="#4CAF50"
+            color="#5ba409"
           />
           <DashboardCard
             icon={ShoppingCart}
@@ -90,7 +90,7 @@ const FarmerDashboard: React.FC<FarmerDashboardProps> = () => {
                         <span className="font-semibold">{product.name}</span>
                       </div>
                     </td>
-                    <td className="py-4 px-4 font-bold text-[#4CAF50]">₱{product.price}/{product.unit}</td>
+                    <td className="py-4 px-4 font-bold text-[#5ba409]">₱{product.price}/{product.unit}</td>
                     <td className="py-4 px-4">
                       <span className={`font-semibold ${product.stock < 20 ? 'text-red-600' : 'text-gray-700'}`}>
                         {product.stock} {product.unit}
@@ -102,7 +102,7 @@ const FarmerDashboard: React.FC<FarmerDashboardProps> = () => {
                       </span>
                     </td>
                     <td className="py-4 px-4">
-                      <button className="text-[#4CAF50] hover:text-[#45A049] font-semibold mr-3">Edit</button>
+                      <button className="text-[#5ba409] hover:text-[#4d8f08] font-semibold mr-3">Edit</button>
                       <button className="text-red-600 hover:text-red-700 font-semibold">Delete</button>
                     </td>
                   </tr>
@@ -117,7 +117,7 @@ const FarmerDashboard: React.FC<FarmerDashboardProps> = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Orders</h2>
           <div className="space-y-4">
             {farmerOrders.map((order) => (
-              <div key={order.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border-2 border-gray-100 rounded-xl hover:border-[#4CAF50] transition-colors">
+              <div key={order.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border-2 border-gray-100 rounded-xl hover:border-[#5ba409] transition-colors">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
                     <span className="font-bold text-gray-900">{order.id}</span>
@@ -133,8 +133,8 @@ const FarmerDashboard: React.FC<FarmerDashboardProps> = () => {
                   <p className="text-gray-600"><span className="font-semibold">Product:</span> {order.product} × {order.qty}</p>
                 </div>
                 <div className="mt-4 md:mt-0 flex items-center space-x-4">
-                  <span className="text-2xl font-bold text-[#4CAF50]">{order.amount}</span>
-                  <button className="bg-[#4CAF50] hover:bg-[#45A049] text-white px-4 py-2 rounded-lg font-semibold">
+                  <span className="text-2xl font-bold text-[#5ba409]">{order.amount}</span>
+                  <button className="bg-[#5ba409] hover:bg-[#4d8f08] text-white px-4 py-2 rounded-lg font-semibold">
                     View Details
                   </button>
                 </div>

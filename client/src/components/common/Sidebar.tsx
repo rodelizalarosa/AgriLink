@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
   const navItems = isFarmer ? farmerNav : adminNav;
 
   const roleLabel = isFarmer ? 'Farmer' : 'Admin';
-  const roleColor = isFarmer ? '#4CAF50' : '#7C3AED';
+  const roleColor = isFarmer ? '#5ba409' : '#7C3AED';
   const roleBg    = isFarmer ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800';
 
   const handleLogout = () => {
@@ -145,7 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
             <select
               value={userType}
               onChange={(e) => setUserType(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#4CAF50]"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#5ba409]"
             >
               <option value="buyer">Buyer</option>
               <option value="farmer">Farmer</option>
@@ -219,8 +219,8 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
           className="
             hidden md:flex absolute -right-3 top-6
             w-6 h-10 bg-white border border-gray-200 shadow-md rounded-full
-            items-center justify-center text-gray-400 hover:text-[#4CAF50]
-            hover:border-[#4CAF50] transition-colors z-10
+            items-center justify-center text-gray-400 hover:text-[#5ba409]
+            hover:border-[#5ba409] transition-colors z-10
           "
         >
           {collapsed
