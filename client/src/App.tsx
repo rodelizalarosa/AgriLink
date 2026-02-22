@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Leaf } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import './App.css';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 
 // Components
 import Navbar from './components/common/Navbar';
+import Sidebar from './components/common/Sidebar';
 import RouteTransition from './components/ui/RouteTransition';
 import LandingPage from './components/pages/LandingPage';
 import MarketplacePage from './components/pages/MarketplacePage';
@@ -13,6 +14,9 @@ import ProductUploadPage from './components/pages/ProductUploadPage';
 import AdminPanel from './components/pages/AdminPanel';
 import { LoginPage } from './components/pages/LoginPage';
 import { RegisterPage } from './components/pages/RegisterPage';
+
+// Routes where the sidebar should be shown (farmer/admin only)
+const SIDEBAR_ROUTES = ['/farmer-dashboard', '/product-upload', '/buyer-dashboard', '/admin'];
 
 // Main App Component
 const AppContent: React.FC = () => {
@@ -156,27 +160,10 @@ const AppContent: React.FC = () => {
                   className="w-24 h-24 object-contain"
                 />
               </div>
-              <p className="text-green-100">Connecting farmers and communities for fresh, sustainable produce.</p>
             </div>
-            <div>
-              <h4 className="font-bold text-lg mb-4">Quick Links</h4>
-              <ul className="space-y-2 text-green-100">
-                <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">How It Works</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-lg mb-4">Contact</h4>
-              <p className="text-green-100">Email: support@agrilink.ph</p>
-              <p className="text-green-100">Phone: +63 123 456 7890</p>
-            </div>
-          </div>
-          <div className="border-t border-green-600 mt-8 pt-8 text-center text-green-100">
-            <p>© 2026 AgriLink. All rights reserved. 🌱</p>
-          </div>
-        </div>
-      </footer>
+          </footer>
+        )}
+      </div>
     </div>
   );
 };

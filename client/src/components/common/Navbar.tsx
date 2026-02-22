@@ -8,7 +8,7 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
   const navigate = useNavigate();
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b-2 border-[#4CAF50] shadow-sm">
+    <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b-2 border-[#5ba409] shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
@@ -24,27 +24,27 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
           <div className="hidden md:flex items-center space-x-6">
             <Link
               to="/marketplace"
-              className="text-gray-700 hover:text-[#4CAF50] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]"
+              className="text-gray-700 hover:text-[#5ba409] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]"
             >
               Marketplace
             </Link>
             <Link
               to={userType === 'farmer' ? '/farmer-dashboard' : '/buyer-dashboard'}
-              className="text-gray-700 hover:text-[#4CAF50] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]"
+              className="text-gray-700 hover:text-[#5ba409] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]"
             >
               Dashboard
             </Link>
             {userType === 'admin' && (
               <Link
                 to="/admin"
-                className="text-gray-700 hover:text-[#4CAF50] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]"
+                className="text-gray-700 hover:text-[#5ba409] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]"
               >
                 Admin
               </Link>
             )}
             <div className="flex items-center space-x-3">
               <button className="relative p-2 hover:bg-[#F9FBE7] rounded-full transition-colors">
-                <ShoppingCart className="w-6 h-6 text-[#4CAF50]" />
+                <ShoppingCart className="w-6 h-6 text-[#5ba409]" />
                 <span className="absolute -top-1 -right-1 bg-[#FFC107] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   0
                 </span>
@@ -54,7 +54,7 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
                 <select
                   value={userType}
                   onChange={(e) => setUserType(e.target.value)}
-                  className="appearance-none bg-[#4CAF50] text-white px-4 py-2 pr-8 rounded-full font-semibold cursor-pointer hover:bg-[#45A049] transition-colors"
+                  className="appearance-none bg-[#5ba409] text-white px-4 py-2 pr-8 rounded-full font-semibold cursor-pointer hover:bg-[#4d8f08] transition-colors"
                 >
                   <option value="buyer">Buyer</option>
                   <option value="farmer">Farmer</option>

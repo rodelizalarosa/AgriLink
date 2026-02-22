@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+@theme {
+  /* ── Brand Green (logo: #5ba409) ── */
+  --color-green-50:  #f2f9e6;
+  --color-green-100: #e0f2c0;
+  --color-green-200: #c5e88e;
+  --color-green-300: #a2d959;
+  --color-green-400: #80c72c;
+  --color-green-500: #6bb80e;
+  --color-green-600: #5ba409;
+  --color-green-700: #498507;
+  --color-green-800: #396706;
+  --color-green-900: #274805;
+  --color-green-950: #152a02;
+}

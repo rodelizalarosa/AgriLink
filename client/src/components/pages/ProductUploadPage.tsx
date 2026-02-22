@@ -28,8 +28,8 @@ const ProductUploadPage: React.FC = () => {
             {/* Image Upload */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-3">Product Image</label>
-              <div className="border-3 border-dashed border-[#4CAF50] rounded-2xl p-12 text-center bg-[#F9FBE7] hover:bg-[#E8F5E9] transition-colors cursor-pointer">
-                <Plus className="w-16 h-16 mx-auto text-[#4CAF50] mb-4" />
+              <div className="border-3 border-dashed border-[#5ba409] rounded-2xl p-12 text-center bg-[#F9FBE7] hover:bg-[#E8F5E9] transition-colors cursor-pointer">
+                <Plus className="w-16 h-16 mx-auto text-[#5ba409] mb-4" />
                 <p className="text-lg font-semibold text-gray-700">Click to upload image</p>
                 <p className="text-sm text-gray-500 mt-2">PNG, JPG up to 5MB</p>
               </div>
@@ -43,7 +43,7 @@ const ProductUploadPage: React.FC = () => {
                 placeholder="e.g., Organic Tomatoes"
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#4CAF50] focus:outline-none font-semibold text-lg"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#5ba409] focus:outline-none font-semibold text-lg"
               />
             </div>
 
@@ -53,7 +53,7 @@ const ProductUploadPage: React.FC = () => {
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({...formData, category: e.target.value})}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#4CAF50] focus:outline-none font-semibold text-lg appearance-none bg-white cursor-pointer"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#5ba409] focus:outline-none font-semibold text-lg appearance-none bg-white cursor-pointer"
               >
                 <option>Vegetables</option>
                 <option>Fruits</option>
@@ -72,7 +72,7 @@ const ProductUploadPage: React.FC = () => {
                   placeholder="85"
                   value={formData.price}
                   onChange={(e) => setFormData({...formData, price: e.target.value})}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#4CAF50] focus:outline-none font-semibold text-lg"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#5ba409] focus:outline-none font-semibold text-lg"
                 />
               </div>
               <div>
@@ -83,12 +83,12 @@ const ProductUploadPage: React.FC = () => {
                     placeholder="50"
                     value={formData.quantity}
                     onChange={(e) => setFormData({...formData, quantity: e.target.value})}
-                    className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#4CAF50] focus:outline-none font-semibold text-lg"
+                    className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#5ba409] focus:outline-none font-semibold text-lg"
                   />
                   <select
                     value={formData.unit}
                     onChange={(e) => setFormData({...formData, unit: e.target.value})}
-                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#4CAF50] focus:outline-none font-semibold text-lg appearance-none bg-white cursor-pointer"
+                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#5ba409] focus:outline-none font-semibold text-lg appearance-none bg-white cursor-pointer"
                   >
                     <option>kg</option>
                     <option>tray</option>
@@ -107,7 +107,7 @@ const ProductUploadPage: React.FC = () => {
                 placeholder="e.g., Cebu City"
                 value={formData.location}
                 onChange={(e) => setFormData({...formData, location: e.target.value})}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#4CAF50] focus:outline-none font-semibold text-lg"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#5ba409] focus:outline-none font-semibold text-lg"
               />
             </div>
 
@@ -119,7 +119,7 @@ const ProductUploadPage: React.FC = () => {
                 placeholder="Tell buyers about your product quality, farming methods, etc."
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#4CAF50] focus:outline-none font-semibold text-lg resize-none"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#5ba409] focus:outline-none font-semibold text-lg resize-none"
               />
             </div>
 
@@ -127,7 +127,7 @@ const ProductUploadPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button
                 type="submit"
-                className="flex-1 bg-[#4CAF50] hover:bg-[#45A049] text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+                className="flex-1 bg-[#5ba409] hover:bg-[#4d8f08] text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
               >
                 Publish Product
               </button>
