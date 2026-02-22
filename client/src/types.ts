@@ -29,6 +29,8 @@ export interface NavbarProps {
   currentPage: string;
   userType: string;
   setUserType: (type: string) => void;
+  isLoggedIn: boolean;
+  onLogout: () => void;
 }
 
 export interface SidebarProps {
@@ -45,7 +47,9 @@ export interface FarmerDashboardProps {
 }
 
 export interface LoginPageProps {
+  onLogin: (role: string) => void;
 }
+
 
 export interface RegisterPageProps {
 }
@@ -104,3 +108,12 @@ export interface RegisterFormData {
 }
 
 
+export interface RegisterFormErrors {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  userType?: string;
+  agreeToTerms?: string;
+}

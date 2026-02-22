@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, User, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { RegisterFormData } from '../../types';
+import { API_BASE_URL } from '../../api/apiConfig';
+
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,31 +16,64 @@ export const RegisterPage: React.FC = () => {
     userType: 'buyer',
     agreeToTerms: false,
   });
-  
+
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // 1️⃣ Local validation
     const newErrors: Partial<RegisterFormData> = {};
-    
+
     if (!formData.firstName) newErrors.firstName = 'First name is required' as any;
     if (!formData.lastName) newErrors.lastName = 'Last name is required' as any;
     if (!formData.email) newErrors.email = 'Email is required' as any;
     if (!formData.password) newErrors.password = 'Password is required' as any;
     if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm your password' as any;
-    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match' as any;
+    if (formData.password !== formData.confirmPassword)
+      newErrors.confirmPassword = 'Passwords do not match' as any;
     if (!formData.agreeToTerms) newErrors.agreeToTerms = 'You must agree to the terms' as any;
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    
-    console.log('Registration attempt:', formData);
-    navigate('/marketplace');
+
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          role_name: formData.userType,
+        }),
+      });
+
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Backend returned an error
+        setErrors({ email: data.message || 'Registration failed' } as any);
+        return;
+      }
+
+
+      // Success
+      navigate('/login'); // redirect to login after successful registration
+
+
+    } catch (err) {
+      setErrors({ email: 'Something went wrong. Please try again.' } as any);
+    }
+
   };
 
   return (
@@ -50,9 +85,9 @@ export const RegisterPage: React.FC = () => {
 
       <div className="relative w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
         <div className="hidden lg:block space-y-8 animate-slideInLeft">
-          <img 
-            src="/src/assets/logo/AgriLinkGREEN.png" 
-            alt="AgriLink Logo" 
+          <img
+            src="/src/assets/logo/AgriLinkGREEN.png"
+            alt="AgriLink Logo"
             className="w-56 h-56 object-contain"
           />
           <div className="space-y-4">
@@ -105,9 +140,9 @@ export const RegisterPage: React.FC = () => {
         <div className="animate-slideInRight">
           <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border-2 border-gray-100">
             <div className="lg:hidden flex items-center justify-center space-x-3 mb-8">
-              <img 
-                src="/src/assets/logo/AgriLinkGREEN.png" 
-                alt="AgriLink Logo" 
+              <img
+                src="/src/assets/logo/AgriLinkGREEN.png"
+                alt="AgriLink Logo"
                 className="w-48 h-48 object-contain"
               />
             </div>
