@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, User, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { RegisterFormData } from '../../types';
+import { API_BASE_URL } from '../../api/apiConfig';
+
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,31 +16,64 @@ export const RegisterPage: React.FC = () => {
     userType: 'buyer',
     agreeToTerms: false,
   });
-  
+
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // 1️⃣ Local validation
     const newErrors: Partial<RegisterFormData> = {};
-    
+
     if (!formData.firstName) newErrors.firstName = 'First name is required' as any;
     if (!formData.lastName) newErrors.lastName = 'Last name is required' as any;
     if (!formData.email) newErrors.email = 'Email is required' as any;
     if (!formData.password) newErrors.password = 'Password is required' as any;
     if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm your password' as any;
-    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match' as any;
+    if (formData.password !== formData.confirmPassword)
+      newErrors.confirmPassword = 'Passwords do not match' as any;
     if (!formData.agreeToTerms) newErrors.agreeToTerms = 'You must agree to the terms' as any;
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    
-    console.log('Registration attempt:', formData);
-    navigate('/marketplace');
+
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          role_name: formData.userType,
+        }),
+      });
+
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Backend returned an error
+        setErrors({ email: data.message || 'Registration failed' } as any);
+        return;
+      }
+
+
+      // Success
+      navigate('/login'); // redirect to login after successful registration
+
+
+    } catch (err) {
+      setErrors({ email: 'Something went wrong. Please try again.' } as any);
+    }
+
   };
 
   return (
@@ -50,9 +85,9 @@ export const RegisterPage: React.FC = () => {
 
       <div className="relative w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
         <div className="hidden lg:block space-y-8 animate-slideInLeft">
-          <img 
-            src="/src/assets/logo/AgriLinkGREEN.png" 
-            alt="AgriLink Logo" 
+          <img
+            src="/src/assets/logo/AgriLinkGREEN.png"
+            alt="AgriLink Logo"
             className="w-56 h-56 object-contain"
           />
           <div className="space-y-4">
@@ -105,9 +140,9 @@ export const RegisterPage: React.FC = () => {
         <div className="animate-slideInRight">
           <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border-2 border-gray-100">
             <div className="lg:hidden flex items-center justify-center space-x-3 mb-8">
-              <img 
-                src="/src/assets/logo/AgriLinkGREEN.png" 
-                alt="AgriLink Logo" 
+              <img
+                src="/src/assets/logo/AgriLinkGREEN.png"
+                alt="AgriLink Logo"
                 className="w-48 h-48 object-contain"
               />
             </div>
@@ -128,9 +163,8 @@ export const RegisterPage: React.FC = () => {
                       placeholder="John"
                       value={formData.firstName}
                       onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                        errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
-                      }`}
+                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                        }`}
                     />
                   </div>
                   {errors.firstName && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.firstName}</p>}
@@ -144,9 +178,8 @@ export const RegisterPage: React.FC = () => {
                       placeholder="Doe"
                       value={formData.lastName}
                       onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                        errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
-                      }`}
+                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                        }`}
                     />
                   </div>
                   {errors.lastName && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.lastName}</p>}
@@ -162,9 +195,8 @@ export const RegisterPage: React.FC = () => {
                     placeholder="your.email@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
-                    }`}
+                    className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                      }`}
                   />
                 </div>
                 {errors.email && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.email}</p>}
@@ -176,22 +208,20 @@ export const RegisterPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, userType: 'buyer' })}
-                    className={`py-3 px-4 rounded-xl font-bold cursor-pointer transition-all ${
-                      formData.userType === 'buyer'
-                        ? 'bg-[#4CAF50] text-white shadow-lg'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                    className={`py-3 px-4 rounded-xl font-bold cursor-pointer transition-all ${formData.userType === 'buyer'
+                      ? 'bg-[#4CAF50] text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
                   >
                     Buyer
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, userType: 'farmer' })}
-                    className={`py-3 px-4 rounded-xl font-bold cursor-pointer transition-all ${
-                      formData.userType === 'farmer'
-                        ? 'bg-[#4CAF50] text-white shadow-lg'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                    className={`py-3 px-4 rounded-xl font-bold cursor-pointer transition-all ${formData.userType === 'farmer'
+                      ? 'bg-[#4CAF50] text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
                   >
                     Farmer
                   </button>
@@ -207,9 +237,8 @@ export const RegisterPage: React.FC = () => {
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
-                    }`}
+                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                      }`}
                   />
                   <button
                     type="button"
@@ -231,9 +260,8 @@ export const RegisterPage: React.FC = () => {
                     placeholder="••••••••"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.confirmPassword ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
-                    }`}
+                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.confirmPassword ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                      }`}
                   />
                   <button
                     type="button"

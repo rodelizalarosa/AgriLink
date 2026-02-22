@@ -17,7 +17,20 @@ import { RegisterPage } from './components/pages/RegisterPage';
 // Main App Component
 const AppContent: React.FC = () => {
   const [userType, setUserType] = useState<string>('buyer');
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const location = useLocation();
+
+
+  const handleLogin = (role: string) => {
+    setUserType(role);
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+
+    setIsLoggedIn(false);
+  };
+
 
   return (
     <div className="min-h-screen bg-white">
@@ -106,13 +119,16 @@ const AppContent: React.FC = () => {
           border-width: 3px;
         }
       `}</style>
-      
+
       <Navbar
         currentPage={location.pathname}
         userType={userType}
         setUserType={setUserType}
+        isLoggedIn={isLoggedIn}
+        onLogout={handleLogout}
       />
-      
+
+
       <RouteTransition>
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -121,21 +137,22 @@ const AppContent: React.FC = () => {
           <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
           <Route path="/product-upload" element={<ProductUploadPage />} />
           <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+
           <Route path="/register" element={<RegisterPage />} />
         </Routes>
       </RouteTransition>
-      
-      
+
+
       {/* Footer */}
       <footer className="bg-[#2E7D32] text-white py-12 mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
             <div>
               <div className="flex items-center justify-center md:justify-start mb-4">
-                <img 
-                  src="/src/assets/logo/AgriLinkWHITE.png" 
-                  alt="AgriLink Logo" 
+                <img
+                  src="/src/assets/logo/AgriLinkWHITE.png"
+                  alt="AgriLink Logo"
                   className="w-24 h-24 object-contain"
                 />
               </div>

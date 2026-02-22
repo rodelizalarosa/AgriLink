@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Menu, X } from 'lucide-react';
+import { ShoppingCart, Menu, X, LogOut, User as UserIcon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { NavbarProps } from '../../types';
 
-const Navbar: React.FC<NavbarProps> = ({ userType, setUserType }) => {
+const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLogout }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const navigate = useNavigate();
 
@@ -13,9 +13,9 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType }) => {
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <img 
-              src="/src/assets/logo/AgriLinkGREEN.png" 
-              alt="AgriLink Logo" 
+            <img
+              src="/src/assets/logo/AgriLinkGREEN.png"
+              alt="AgriLink Logo"
               className="w-16 h-16 object-contain transform hover:scale-105 transition-all"
             />
           </Link>
@@ -49,6 +49,7 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType }) => {
                   0
                 </span>
               </button>
+
               <div className="relative">
                 <select
                   value={userType}
@@ -60,18 +61,39 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType }) => {
                   <option value="admin">Admin</option>
                 </select>
               </div>
-              <button 
-                onClick={() => navigate('/login')}
-                className="bg-[#4CAF50] border-2 border-[#4CAF50] hover:bg-[#45A049] hover:border-[#4CAF50] text-white px-4 py-2 rounded-full font-semibold transition-colors"
-              >
-                Login
-              </button>
-              <button 
-                onClick={() => navigate('/register')}
-                className="border-2 border-[#4CAF50] text-[#4CAF50] hover:bg-[#4CAF50] hover:text-white px-4 py-2 rounded-full font-semibold transition-colors"
-              >
-                Register
-              </button>
+
+              {!isLoggedIn ? (
+                <>
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="bg-[#4CAF50] border-2 border-[#4CAF50] hover:bg-[#45A049] hover:border-[#4CAF50] text-white px-4 py-2 rounded-full font-semibold transition-colors"
+                  >
+                    Login
+                  </button>
+                  <button
+                    onClick={() => navigate('/register')}
+                    className="border-2 border-[#4CAF50] text-[#4CAF50] hover:bg-[#4CAF50] hover:text-white px-4 py-2 rounded-full font-semibold transition-colors"
+                  >
+                    Register
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center space-x-4 ml-4 pl-4 border-l-2 border-gray-100">
+                  <div className="flex items-center space-x-2 text-gray-700">
+                    <div className="bg-green-100 p-2 rounded-full">
+                      <UserIcon className="w-5 h-5 text-[#4CAF50]" />
+                    </div>
+                    <span className="font-bold capitalize">{userType}</span>
+                  </div>
+                  <button
+                    onClick={() => { onLogout(); navigate('/'); }}
+                    className="flex items-center space-x-1 text-red-500 hover:text-red-600 font-bold transition-colors"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -101,22 +123,36 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType }) => {
             >
               Dashboard
             </Link>
-            <button
-              onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
-              className="w-full bg-[#4CAF50] border-2 border-[#4CAF50] hover:bg-[#45A049] hover:border-[#4CAF50] text-white px-4 py-3 rounded-lg font-semibold"
-            >
-              Login
-            </button>
-            <button
-              onClick={() => { navigate('/register'); setMobileMenuOpen(false); }}
-              className="w-full border-2 border-[#4CAF50] text-[#4CAF50] hover:bg-[#4CAF50] hover:text-white px-4 py-3 rounded-lg font-semibold"
-            >
-              Register
-            </button>
+
+            {!isLoggedIn ? (
+              <>
+                <button
+                  onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
+                  className="w-full bg-[#4CAF50] border-2 border-[#4CAF50] hover:bg-[#45A049] hover:border-[#4CAF50] text-white px-4 py-3 rounded-lg font-semibold"
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => { navigate('/register'); setMobileMenuOpen(false); }}
+                  className="w-full border-2 border-[#4CAF50] text-[#4CAF50] hover:bg-[#4CAF50] hover:text-white px-4 py-3 rounded-lg font-semibold"
+                >
+                  Register
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => { onLogout(); setMobileMenuOpen(false); navigate('/'); }}
+                className="w-full bg-red-50 text-red-500 border-2 border-red-500 py-3 rounded-lg font-bold flex items-center justify-center space-x-2"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>Logout</span>
+              </button>
+            )}
+
             <select
               value={userType}
               onChange={(e) => setUserType(e.target.value)}
-              className="w-full bg-[#4CAF50] border-2 border-[#4CAF50] text-[#4CAF50] hover:bg-[#4CAF50] hover:text-white px-4 py-3 rounded-lg font-semibold"
+              className="w-full bg-[#4CAF50] border-2 border-[#4CAF50] text-white hover:bg-[#45A049] px-4 py-3 rounded-lg font-semibold"
             >
               <option value="buyer">Buyer</option>
               <option value="farmer">Farmer</option>

@@ -1,33 +1,56 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { LoginFormData } from '../../types';
+import { API_BASE_URL } from '../../api/apiConfig';
+import type { LoginFormData, LoginPageProps } from '../../types';
 
-export const LoginPage: React.FC = () => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
     rememberMe: false,
   });
-  
+
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errors, setErrors] = useState<Partial<LoginFormData>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newErrors: Partial<LoginFormData> = {};
     if (!formData.email) newErrors.email = 'Email is required' as any;
     if (!formData.password) newErrors.password = 'Password is required' as any;
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    
-    console.log('Login attempt:', formData);
-    navigate('/marketplace');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrors({ email: data.message || 'Login failed' } as any);
+        return;
+      }
+
+      // Success
+      onLogin(data.result.role_name);
+      navigate('/marketplace');
+    } catch (err) {
+      setErrors({ email: 'Something went wrong. Please try again.' } as any);
+    }
   };
 
   return (
@@ -39,9 +62,9 @@ export const LoginPage: React.FC = () => {
 
       <div className="relative w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
         <div className="hidden lg:block space-y-8 animate-slideInLeft">
-          <img 
-            src="/src/assets/logo/AgriLinkGREEN.png" 
-            alt="AgriLink Logo" 
+          <img
+            src="/src/assets/logo/AgriLinkGREEN.png"
+            alt="AgriLink Logo"
             className="w-56 h-56 object-contain"
           />
 
@@ -58,9 +81,9 @@ export const LoginPage: React.FC = () => {
           <div className="relative bg-gradient-to-br from-[#4CAF50] to-[#66BB6A] rounded-3xl p-6 shadow-2xl">
             <div className="bg-white rounded-2xl p-6 flex justify-center space-x-3 text-5xl">
               <span className="animate-bounce">🌾</span>
-              <span className="animate-bounce" style={{animationDelay: '0.1s'}}>🥕</span>
-              <span className="animate-bounce" style={{animationDelay: '0.2s'}}>🍅</span>
-              <span className="animate-bounce" style={{animationDelay: '0.3s'}}>🥬</span>
+              <span className="animate-bounce" style={{ animationDelay: '0.1s' }}>🥕</span>
+              <span className="animate-bounce" style={{ animationDelay: '0.2s' }}>🍅</span>
+              <span className="animate-bounce" style={{ animationDelay: '0.3s' }}>🥬</span>
             </div>
           </div>
         </div>
@@ -68,9 +91,9 @@ export const LoginPage: React.FC = () => {
         <div className="animate-slideInRight">
           <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border-2 border-gray-100">
             <div className="lg:hidden flex items-center justify-center space-x-3 mb-8">
-              <img 
-                src="/src/assets/logo/AgriLinkGREEN.png" 
-                alt="AgriLink Logo" 
+              <img
+                src="/src/assets/logo/AgriLinkGREEN.png"
+                alt="AgriLink Logo"
                 className="w-48 h-48 object-contain"
               />
             </div>
@@ -90,9 +113,8 @@ export const LoginPage: React.FC = () => {
                     placeholder="your.email@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
-                    }`}
+                    className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                      }`}
                   />
                 </div>
                 {errors.email && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.email}</p>}
@@ -107,9 +129,8 @@ export const LoginPage: React.FC = () => {
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
-                    }`}
+                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                      }`}
                   />
                   <button
                     type="button"
