@@ -20,7 +20,7 @@ const AdminPanel: React.FC = () => {
             title="Total Users"
             value="2,456"
             subtitle="456 farmers, 2k buyers"
-            color="#4CAF50"
+            color="#5ba409"
           />
           <DashboardCard
             icon={Package}
@@ -57,7 +57,7 @@ const AdminPanel: React.FC = () => {
           </div>
           <div className="space-y-4">
             {pendingFarmers.map((farmer, idx) => (
-              <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between p-4 border-2 border-gray-100 rounded-xl hover:border-[#4CAF50] transition-colors">
+              <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between p-4 border-2 border-gray-100 rounded-xl hover:border-[#5ba409] transition-colors">
                 <div className="flex-1">
                   <h3 className="font-bold text-gray-900 mb-1">{farmer.name}</h3>
                   <p className="text-gray-600"><MapPin className="inline w-4 h-4 mr-1" />{farmer.location}</p>
@@ -65,7 +65,7 @@ const AdminPanel: React.FC = () => {
                   <p className="text-xs text-gray-400 mt-1">Applied: {farmer.date}</p>
                 </div>
                 <div className="mt-4 md:mt-0 flex space-x-3">
-                  <button className="bg-[#4CAF50] hover:bg-[#45A049] text-white px-4 py-2 rounded-lg font-semibold">
+                  <button className="bg-[#5ba409] hover:bg-[#4d8f08] text-white px-4 py-2 rounded-lg font-semibold">
                     Approve
                   </button>
                   <button className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg font-semibold">
@@ -111,7 +111,7 @@ const AdminPanel: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-4 px-4">
-                      <button className="text-[#4CAF50] hover:text-[#45A049] font-semibold mr-3">View</button>
+                      <button className="text-[#5ba409] hover:text-[#4d8f08] font-semibold mr-3">View</button>
                       <button className="text-gray-600 hover:text-gray-800 font-semibold">Manage</button>
                     </td>
                   </tr>

@@ -44,7 +44,7 @@ export const RegisterPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F9FBE7] via-white to-[#E8F5E9] flex items-center justify-center p-4">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-[#4CAF50] rounded-full opacity-5 blur-3xl animate-float"></div>
+        <div className="absolute top-20 left-10 w-72 h-72 bg-[#5ba409] rounded-full opacity-5 blur-3xl animate-float"></div>
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#FFC107] rounded-full opacity-5 blur-3xl animate-float-delayed"></div>
       </div>
 
@@ -58,7 +58,7 @@ export const RegisterPage: React.FC = () => {
           <div className="space-y-4">
             <h2 className="text-4xl font-black text-gray-900 leading-tight">
               Join Our
-              <span className="block text-[#4CAF50] mt-2">Community</span>
+              <span className="block text-[#5ba409] mt-2">Community</span>
             </h2>
             <p className="text-xl text-gray-600">
               Create your account and start connecting with local farmers for fresh, sustainable produce.
@@ -69,7 +69,7 @@ export const RegisterPage: React.FC = () => {
             <div className="bg-white rounded-2xl p-4 shadow-lg border-2 border-green-100">
               <div className="flex items-center space-x-3">
                 <div className="bg-green-100 p-2 rounded-full">
-                  <CheckCircle className="w-6 h-6 text-[#4CAF50]" />
+                  <CheckCircle className="w-6 h-6 text-[#5ba409]" />
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900">Direct Sourcing</h3>
@@ -80,7 +80,7 @@ export const RegisterPage: React.FC = () => {
             <div className="bg-white rounded-2xl p-4 shadow-lg border-2 border-green-100">
               <div className="flex items-center space-x-3">
                 <div className="bg-green-100 p-2 rounded-full">
-                  <CheckCircle className="w-6 h-6 text-[#4CAF50]" />
+                  <CheckCircle className="w-6 h-6 text-[#5ba409]" />
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900">Fresh Produce</h3>
@@ -91,7 +91,7 @@ export const RegisterPage: React.FC = () => {
             <div className="bg-white rounded-2xl p-4 shadow-lg border-2 border-green-100">
               <div className="flex items-center space-x-3">
                 <div className="bg-green-100 p-2 rounded-full">
-                  <CheckCircle className="w-6 h-6 text-[#4CAF50]" />
+                  <CheckCircle className="w-6 h-6 text-[#5ba409]" />
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900">Support Local</h3>
@@ -129,7 +129,7 @@ export const RegisterPage: React.FC = () => {
                       value={formData.firstName}
                       onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                       className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                        errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                        errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
                       }`}
                     />
                   </div>
@@ -145,7 +145,7 @@ export const RegisterPage: React.FC = () => {
                       value={formData.lastName}
                       onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                       className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                        errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                        errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
                       }`}
                     />
                   </div>
@@ -163,7 +163,7 @@ export const RegisterPage: React.FC = () => {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                      errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
                     }`}
                   />
                 </div>
@@ -178,7 +178,7 @@ export const RegisterPage: React.FC = () => {
                     onClick={() => setFormData({ ...formData, userType: 'buyer' })}
                     className={`py-3 px-4 rounded-xl font-bold cursor-pointer transition-all ${
                       formData.userType === 'buyer'
-                        ? 'bg-[#4CAF50] text-white shadow-lg'
+                        ? 'bg-[#5ba409] text-white shadow-lg'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -189,7 +189,7 @@ export const RegisterPage: React.FC = () => {
                     onClick={() => setFormData({ ...formData, userType: 'farmer' })}
                     className={`py-3 px-4 rounded-xl font-bold cursor-pointer transition-all ${
                       formData.userType === 'farmer'
-                        ? 'bg-[#4CAF50] text-white shadow-lg'
+                        ? 'bg-[#5ba409] text-white shadow-lg'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -208,7 +208,7 @@ export const RegisterPage: React.FC = () => {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                      errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
                     }`}
                   />
                   <button
@@ -232,7 +232,7 @@ export const RegisterPage: React.FC = () => {
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                     className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.confirmPassword ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                      errors.confirmPassword ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
                     }`}
                   />
                   <button
@@ -251,15 +251,15 @@ export const RegisterPage: React.FC = () => {
                   type="checkbox"
                   checked={formData.agreeToTerms}
                   onChange={(e) => setFormData({ ...formData, agreeToTerms: e.target.checked })}
-                  className="w-4 h-4 text-[#4CAF50] border-gray-300 rounded focus:ring-[#4CAF50] mt-1"
+                  className="w-4 h-4 text-[#5ba409] border-gray-300 rounded focus:ring-[#5ba409] mt-1"
                 />
                 <label className="text-sm text-gray-700">
                   I agree to the{' '}
-                  <button type="button" className="font-bold text-[#4CAF50] hover:text-[#45A049] cursor-pointer transition-colors">
+                  <button type="button" className="font-bold text-[#5ba409] hover:text-[#4d8f08] cursor-pointer transition-colors">
                     Terms of Service
                   </button>{' '}
                   and{' '}
-                  <button type="button" className="font-bold text-[#4CAF50] hover:text-[#45A049] cursor-pointer transition-colors">
+                  <button type="button" className="font-bold text-[#5ba409] hover:text-[#4d8f08] cursor-pointer transition-colors">
                     Privacy Policy
                   </button>
                 </label>
@@ -268,7 +268,7 @@ export const RegisterPage: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full bg-[#4CAF50] hover:bg-[#45A049] text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center space-x-2"
+                className="w-full bg-[#5ba409] hover:bg-[#4d8f08] text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center space-x-2"
               >
                 <span>Create Account</span>
                 <ArrowRight className="w-5 h-5" />
@@ -281,7 +281,7 @@ export const RegisterPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/login')}
-                  className="font-bold text-[#4CAF50] hover:text-[#45A049] cursor-pointer transition-colors"
+                  className="font-bold text-[#5ba409] hover:text-[#4d8f08] cursor-pointer transition-colors"
                 >
                   Sign In
                 </button>

@@ -33,7 +33,7 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F9FBE7] via-white to-[#E8F5E9] flex items-center justify-center p-4">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-[#4CAF50] rounded-full opacity-5 blur-3xl animate-float"></div>
+        <div className="absolute top-20 left-10 w-72 h-72 bg-[#5ba409] rounded-full opacity-5 blur-3xl animate-float"></div>
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#FFC107] rounded-full opacity-5 blur-3xl animate-float-delayed"></div>
       </div>
 
@@ -48,14 +48,14 @@ export const LoginPage: React.FC = () => {
           <div className="space-y-4">
             <h2 className="text-4xl font-black text-gray-900 leading-tight">
               Welcome Back to
-              <span className="block text-[#4CAF50] mt-2">AgriLink</span>
+              <span className="block text-[#5ba409] mt-2">AgriLink</span>
             </h2>
             <p className="text-xl text-gray-600">
               Log in to access fresh produce directly from local farmers and support your community.
             </p>
           </div>
 
-          <div className="relative bg-gradient-to-br from-[#4CAF50] to-[#66BB6A] rounded-3xl p-6 shadow-2xl">
+          <div className="relative bg-gradient-to-br from-[#5ba409] to-[#74c419] rounded-3xl p-6 shadow-2xl">
             <div className="bg-white rounded-2xl p-6 flex justify-center space-x-3 text-5xl">
               <span className="animate-bounce">🌾</span>
               <span className="animate-bounce" style={{animationDelay: '0.1s'}}>🥕</span>
@@ -91,7 +91,7 @@ export const LoginPage: React.FC = () => {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                      errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
                     }`}
                   />
                 </div>
@@ -108,7 +108,7 @@ export const LoginPage: React.FC = () => {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#4CAF50]'
+                      errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
                     }`}
                   />
                   <button
@@ -128,18 +128,18 @@ export const LoginPage: React.FC = () => {
                     type="checkbox"
                     checked={formData.rememberMe}
                     onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
-                    className="w-4 h-4 text-[#4CAF50] border-gray-300 rounded focus:ring-[#4CAF50]"
+                    className="w-4 h-4 text-[#5ba409] border-gray-300 rounded focus:ring-[#5ba409]"
                   />
                   <span className="text-sm font-semibold text-gray-700">Remember me</span>
                 </label>
-                <button type="button" className="text-sm font-bold text-[#4CAF50] hover:text-[#45A049] transition-colors">
+                <button type="button" className="text-sm font-bold text-[#5ba409] hover:text-[#4d8f08] transition-colors">
                   Forgot Password?
                 </button>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-[#4CAF50] hover:bg-[#45A049] text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center space-x-2"
+                className="w-full bg-[#5ba409] hover:bg-[#4d8f08] text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center space-x-2"
               >
                 <span>Sign In</span>
                 <ArrowRight className="w-5 h-5" />
@@ -152,7 +152,7 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/register')}
-                  className="font-bold text-[#4CAF50] hover:text-[#45A049] transition-colors"
+                  className="font-bold text-[#5ba409] hover:text-[#4d8f08] transition-colors"
                 >
                   Sign Up
                 </button>

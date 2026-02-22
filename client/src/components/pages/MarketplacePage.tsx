@@ -40,7 +40,7 @@ const MarketplacePage: React.FC = () => {
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#4CAF50] focus:outline-none font-semibold"
+                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#5ba409] focus:outline-none font-semibold"
               />
             </div>
 
@@ -48,7 +48,7 @@ const MarketplacePage: React.FC = () => {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#4CAF50] focus:outline-none font-semibold appearance-none bg-white cursor-pointer"
+              className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#5ba409] focus:outline-none font-semibold appearance-none bg-white cursor-pointer"
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -59,7 +59,7 @@ const MarketplacePage: React.FC = () => {
             <select
               value={priceRange}
               onChange={(e) => setPriceRange(e.target.value)}
-              className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#4CAF50] focus:outline-none font-semibold appearance-none bg-white cursor-pointer"
+              className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#5ba409] focus:outline-none font-semibold appearance-none bg-white cursor-pointer"
             >
               <option value="all">All Prices</option>
               <option value="low">Under ₱70</option>
@@ -72,7 +72,7 @@ const MarketplacePage: React.FC = () => {
         {/* Results Count */}
         <div className="mb-6">
           <p className="text-gray-600 font-semibold">
-            Showing <span className="text-[#4CAF50] font-bold">{filteredProducts.length}</span> products
+            Showing <span className="text-[#5ba409] font-bold">{filteredProducts.length}</span> products
           </p>
         </div>
 
