@@ -1,8 +1,8 @@
 import React from 'react';
 import { ShoppingCart, Package, CheckCircle, Clock } from 'lucide-react';
-import { sampleProducts, buyerOrders } from '../../data';
-import DashboardCard from '../ui/DashboardCard';
-import ProductCard from '../ui/ProductCard';
+import { sampleProducts, buyerOrders } from '../../../data';
+import DashboardCard from '../../ui/DashboardCard';
+import ProductCard from '../../ui/ProductCard';
 
 const BuyerDashboard: React.FC = () => {
   return (

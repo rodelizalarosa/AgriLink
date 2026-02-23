@@ -1,7 +1,8 @@
 import React from 'react';
 import { MapPin, Package, ShoppingCart, TrendingUp, Users } from 'lucide-react';
-import { pendingFarmers, users } from '../../data';
-import DashboardCard from '../ui/DashboardCard';
+import { pendingFarmers, users } from '../../../data';
+import DashboardCard from '../../ui/DashboardCard';
+import type { FarmerApplication, UserData } from '../../../types';
 
 const AdminPanel: React.FC = () => {
   return (
@@ -56,7 +57,7 @@ const AdminPanel: React.FC = () => {
             </span>
           </div>
           <div className="space-y-4">
-            {pendingFarmers.map((farmer, idx) => (
+            {pendingFarmers.map((farmer: FarmerApplication, idx: number) => (
               <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between p-4 border-2 border-gray-100 rounded-xl hover:border-[#5ba409] transition-colors">
                 <div className="flex-1">
                   <h3 className="font-bold text-gray-900 mb-1">{farmer.name}</h3>
@@ -92,7 +93,7 @@ const AdminPanel: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user, idx) => (
+                {users.map((user: UserData, idx: number) => (
                   <tr key={idx} className="border-b border-gray-100 hover:bg-[#F9FBE7] transition-colors">
                     <td className="py-4 px-4 font-semibold">{user.name}</td>
                     <td className="py-4 px-4">

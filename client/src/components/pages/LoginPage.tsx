@@ -46,8 +46,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       }
 
       // Success
-      onLogin(data.result.role_name);
-      navigate('/marketplace');
+      const role = data.result.role_name.toLowerCase();
+      onLogin(role);
+
+      {role === 'admin' ? navigate('/admin-dashboard') : role === 'farmer' ? navigate('/farmer-dashboard') : navigate('/marketplace')}
+
     } catch (err) {
       setErrors({ email: 'Something went wrong. Please try again.' } as any);
     }

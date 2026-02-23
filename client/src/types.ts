@@ -34,10 +34,11 @@ export interface NavbarProps {
 }
 
 export interface SidebarProps {
-  userType: 'farmer' | 'admin';
+  userType: string;
   setUserType: (type: string) => void;
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
+  onLogout: () => void;
 }
 
 export interface LandingPageProps {
@@ -116,4 +117,23 @@ export interface RegisterFormErrors {
   confirmPassword?: string;
   userType?: string;
   agreeToTerms?: string;
+}
+
+export interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  province: string;
+  zipCode: string;
+  userType: 'farmer' | 'buyer' | 'admin';
+  profileImage?: string;
+  bio?: string;
+  // Farmer specific
+  farmName?: string;
+  farmSize?: string;
+  deliveryRange?: string;
 }

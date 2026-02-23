@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
-import type { FormData } from '../../types';
+import type { FormData } from '../../../types';
 
 const ProductUploadPage: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({

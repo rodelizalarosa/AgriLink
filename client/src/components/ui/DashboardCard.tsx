@@ -18,7 +18,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({ icon: Icon, title, value,
           )}
         </div>
         <div className="p-4 rounded-xl" style={{ backgroundColor: `${color}10` }}>
-          <Icon className="w-8 h-8" style={{ color }} />
+          <Icon className={`w-8 h-8 text-[${color}]`} />
         </div>
       </div>
     </div>

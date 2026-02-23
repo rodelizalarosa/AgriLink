@@ -1,9 +1,9 @@
 import React from 'react';
 import { Plus, Package, ShoppingCart, TrendingUp, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { FarmerDashboardProps } from '../../types';
-import { sampleProducts, farmerOrders } from '../../data';
-import DashboardCard from '../ui/DashboardCard';
+import type { FarmerDashboardProps } from '../../../types';
+import { sampleProducts, farmerOrders } from '../../../data';
+import DashboardCard from '../../ui/DashboardCard';
 
 const FarmerDashboard: React.FC<FarmerDashboardProps> = () => {
   const navigate = useNavigate();

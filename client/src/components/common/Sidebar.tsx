@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Menu,
   X,
+  User,
 } from 'lucide-react';
 import type { SidebarProps } from '../../types';
 
@@ -20,26 +21,28 @@ import type { SidebarProps } from '../../types';
 
 const farmerNav = [
   { label: 'Dashboard',    icon: LayoutDashboard, to: '/farmer-dashboard' },
-  { label: 'My Listings',  icon: Package,         to: '/marketplace'      },
+  { label: 'My Listings',  icon: Package,         to: '/farmer-listings'  },
   { label: 'Add Product',  icon: Plus,            to: '/product-upload'   },
-  { label: 'Orders',       icon: ShoppingCart,    to: '/buyer-dashboard'  },
+  { label: 'Orders',       icon: ShoppingCart,    to: '/farmer-orders'    },
+  { label: 'Profile',      icon: User,            to: '/profile'          },
 ];
 
 const adminNav = [
-  { label: 'Dashboard',         icon: LayoutDashboard, to: '/admin'      },
-  { label: 'User Management',   icon: Users,           to: '/admin'      },
-  { label: 'Pending Approvals', icon: ClipboardList,   to: '/admin'      },
-  { label: 'Reports',           icon: BarChart2,       to: '/admin'      },
+  { label: 'Dashboard',         icon: LayoutDashboard, to: '/admin-dashboard' },
+  { label: 'User Management',   icon: Users,           to: '/admin-users'      },
+  { label: 'Inventory Moderation', icon: Package,         to: '/admin-listings'   },
+  { label: 'Platform Orders',   icon: ShoppingCart,    to: '/admin-orders'     },
+  { label: 'Profile',           icon: User,            to: '/profile'          },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, setCollapsed }) => {
+const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, setCollapsed, onLogout }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isFarmer = userType === 'farmer';
+  const isFarmer = userType.toLowerCase() === 'farmer';
   const navItems = isFarmer ? farmerNav : adminNav;
 
   const roleLabel = isFarmer ? 'Farmer' : 'Admin';
@@ -47,7 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
   const roleBg    = isFarmer ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800';
 
   const handleLogout = () => {
-    setUserType('buyer');
+    onLogout();
     navigate('/');
   };
 
@@ -107,11 +110,9 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-hidden">
         {navItems.map(({ label, icon: Icon, to }) => {
-          const active = location.pathname === to && label !== 'User Management' && label !== 'Pending Approvals' && label !== 'Reports'
-            ? true
-            : location.pathname === to && label === 'Dashboard';
+          const active = location.pathname === to;
           return (
             <Link
               key={label}
@@ -134,26 +135,8 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
         })}
       </nav>
 
-      {/* Role switcher (dev helper) + Logout */}
-      <div className="px-3 py-4 border-t border-gray-100 space-y-2">
-        {/* Role switcher — small helper for demo purposes */}
-        {!collapsed && (
-          <div className="mb-2">
-            <label className="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1 px-1">
-              Switch Role
-            </label>
-            <select
-              value={userType}
-              onChange={(e) => setUserType(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#5ba409]"
-            >
-              <option value="buyer">Buyer</option>
-              <option value="farmer">Farmer</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-        )}
-
+      {/* Logout */}
+      <div className="mt-auto px-3 py-4 border-t border-gray-100 space-y-2 sticky bottom-0 bg-white z-10">
         <button
           onClick={handleLogout}
           title={collapsed ? 'Logout' : undefined}
@@ -205,10 +188,9 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
       <aside
         className={`
           hidden md:flex flex-col bg-white border-r border-gray-200 shadow-sm
-          transition-all duration-300 ease-in-out flex-shrink-0 relative
+          transition-all duration-300 ease-in-out flex-shrink-0 fixed top-0 left-0 h-screen z-40
           ${collapsed ? 'w-20' : 'w-64'}
         `}
-        style={{ minHeight: '100vh' }}
       >
         {SidebarContent}
 
