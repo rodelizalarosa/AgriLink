@@ -104,7 +104,7 @@ export interface RegisterFormData {
   email: string;
   password: string;
   confirmPassword: string;
-  userType: 'farmer' | 'buyer';
+  userType: 'farmer' | 'buyer' | 'brgy_official' | 'lgu_official';
   agreeToTerms: boolean;
 }
 
@@ -129,7 +129,7 @@ export interface UserProfile {
   city: string;
   province: string;
   zipCode: string;
-  userType: 'farmer' | 'buyer' | 'admin';
+  userType: 'farmer' | 'buyer' | 'admin' | 'brgy_official' | 'lgu_official';
   profileImage?: string;
   bio?: string;
   // Farmer specific

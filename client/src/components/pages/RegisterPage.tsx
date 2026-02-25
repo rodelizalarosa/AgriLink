@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, User, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, User, CheckCircle, ShoppingCart, Sprout } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { RegisterFormData } from '../../types';
 import { API_BASE_URL } from '../../api/apiConfig';
 
 
-export const RegisterPage: React.FC = () => {
+interface RegisterPageProps {
+  onLogin: (role: string) => void;
+}
+
+export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<RegisterFormData>({
     firstName: '',
@@ -60,14 +64,33 @@ export const RegisterPage: React.FC = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        // Backend returned an error
         setErrors({ email: data.message || 'Registration failed' } as any);
         return;
       }
 
 
-      // Success
-      navigate('/login'); // redirect to login after successful registration
+      // 2️⃣ Auto-login after successful registration
+      const loginResponse = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const loginData = await loginResponse.json();
+
+      if (loginResponse.ok) {
+        const role = loginData.result.role_name.toLowerCase();
+        onLogin(role);
+        // Special redirect for new signups to complete their profile
+        navigate('/profile?setup=true');
+      } else {
+        // If auto-login fails for some reason, just go to login page
+        navigate('/login');
+      }
 
 
     } catch (err) {
@@ -206,29 +229,46 @@ export const RegisterPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">I am a...</label>
-                <div className="grid grid-cols-2 gap-4">
+                <label className="block text-sm font-bold text-gray-700 mb-4">I want to join as a...</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, userType: 'buyer' })}
-                    className={`py-3 px-4 rounded-xl font-bold cursor-pointer transition-all ${
+                    className={`p-5 rounded-2xl border-2 transition-all flex items-center gap-4 text-left group ${
                       formData.userType === 'buyer'
-                        ? 'bg-[#5ba409] text-white shadow-lg'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'border-[#5ba409] bg-green-50/50 shadow-lg shadow-green-900/5'
+                        : 'border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white'
                     }`}
                   >
-                    Buyer
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                      formData.userType === 'buyer' ? 'bg-[#5ba409] text-white' : 'bg-white text-gray-400 group-hover:text-[#5ba409]'
+                    }`}>
+                      <ShoppingCart className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className={`font-black text-sm ${formData.userType === 'buyer' ? 'text-gray-900' : 'text-gray-500'}`}>Buyer</p>
+                      <p className="text-[10px] font-medium text-gray-400">Order fresh produce</p>
+                    </div>
                   </button>
+
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, userType: 'farmer' })}
-                    className={`py-3 px-4 rounded-xl font-bold cursor-pointer transition-all ${
+                    className={`p-5 rounded-2xl border-2 transition-all flex items-center gap-4 text-left group ${
                       formData.userType === 'farmer'
-                        ? 'bg-[#5ba409] text-white shadow-lg'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'border-[#5ba409] bg-green-50/50 shadow-lg shadow-green-900/5'
+                        : 'border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white'
                     }`}
                   >
-                    Farmer
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                      formData.userType === 'farmer' ? 'bg-[#5ba409] text-white' : 'bg-white text-gray-400 group-hover:text-[#5ba409]'
+                    }`}>
+                      <Sprout className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className={`font-black text-sm ${formData.userType === 'farmer' ? 'text-gray-900' : 'text-gray-500'}`}>Farmer</p>
+                      <p className="text-[10px] font-medium text-gray-400">Sell your crops</p>
+                    </div>
                   </button>
                 </div>
               </div>
@@ -281,20 +321,20 @@ export const RegisterPage: React.FC = () => {
                 {errors.confirmPassword && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.confirmPassword}</p>}
               </div>
 
-              <div className="flex items-start space-x-2">
+              <div className="flex items-start space-x-3 group cursor-pointer">
                 <input
                   type="checkbox"
                   checked={formData.agreeToTerms}
                   onChange={(e) => setFormData({ ...formData, agreeToTerms: e.target.checked })}
-                  className="w-4 h-4 text-[#5ba409] border-gray-300 rounded focus:ring-[#5ba409] mt-1"
+                  className="w-5 h-5 rounded border-2 border-gray-200 text-[#5ba409] focus:ring-[#5ba409] accent-[#5ba409] cursor-pointer transition-all mt-0.5"
                 />
-                <label className="text-sm text-gray-700">
+                <label className="text-sm text-gray-600 font-medium leading-relaxed cursor-pointer group-hover:text-gray-900 transition-colors">
                   I agree to the{' '}
-                  <button type="button" className="font-bold text-[#5ba409] hover:text-[#4d8f08] cursor-pointer transition-colors">
+                  <button type="button" className="font-bold text-[#5ba409] hover:underline cursor-pointer">
                     Terms of Service
                   </button>{' '}
                   and{' '}
-                  <button type="button" className="font-bold text-[#5ba409] hover:text-[#4d8f08] cursor-pointer transition-colors">
+                  <button type="button" className="font-bold text-[#5ba409] hover:underline cursor-pointer">
                     Privacy Policy
                   </button>
                 </label>

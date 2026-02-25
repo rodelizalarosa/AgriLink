@@ -4,21 +4,55 @@ import type { DashboardCardProps } from '../../types';
 
 const DashboardCard: React.FC<DashboardCardProps> = ({ icon: Icon, title, value, subtitle, color, trend }) => {
   return (
-    <div className={`bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all border-l-4`} style={{ borderColor: color }}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-gray-600 font-semibold text-sm mb-2">{title}</p>
-          <h3 className="text-3xl font-bold text-gray-800 mb-1">{value}</h3>
-          {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
-          {trend && (
-            <div className="flex items-center mt-2 text-sm">
-              <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
-              <span className="text-green-600 font-semibold">{trend}</span>
+    <div className="group relative bg-white rounded-[2rem] p-7 shadow-xl shadow-gray-200/40 hover:shadow-2xl hover:shadow-gray-300/50 transition-all duration-300 border border-gray-100/50 overflow-hidden">
+      {/* Decorative background element */}
+      <div 
+        className="absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-[0.03] group-hover:opacity-[0.05] transition-opacity duration-500"
+        style={{ backgroundColor: color }}
+      />
+      
+      <div className="relative flex items-start justify-between">
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <p className="text-xs font-black text-gray-400 uppercase tracking-[0.15em]">
+              {title}
+            </p>
+            <div className="flex items-baseline gap-1">
+              <h3 className="text-4xl font-black text-gray-900 tracking-tight">
+                {value}
+              </h3>
             </div>
-          )}
+          </div>
+          
+          <div className="space-y-2">
+            {subtitle && (
+              <p className="text-sm font-semibold text-gray-500 leading-tight">
+                {subtitle}
+              </p>
+            )}
+            
+            {trend && (
+              <div className="flex items-center gap-1.5 py-1 px-3 bg-gray-50 rounded-full w-fit">
+                <div 
+                  className="w-1.5 h-1.5 rounded-full animate-pulse"
+                  style={{ backgroundColor: color }}
+                />
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider">
+                  {trend}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="p-4 rounded-xl" style={{ backgroundColor: `${color}10` }}>
-          <Icon className={`w-8 h-8 text-[${color}]`} />
+
+        <div 
+          className="flex items-center justify-center w-14 h-14 rounded-2xl shadow-lg ring-4 ring-white transition-all duration-300 group-hover:-translate-y-1 group-hover:rotate-3"
+          style={{ 
+            backgroundColor: color,
+            boxShadow: `0 10px 20px -5px ${color}40`
+          }}
+        >
+          <Icon className="w-7 h-7 text-white" />
         </div>
       </div>
     </div>

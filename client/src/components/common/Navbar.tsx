@@ -8,7 +8,7 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
   const navigate = useNavigate();
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b-2 border-[#5ba409] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-gray-100 shadow-sm transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
@@ -28,13 +28,25 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
             >
               Marketplace
             </Link>
+            <Link
+              to="/map"
+              className="text-gray-700 hover:text-[#5ba409] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]"
+            >
+              Maps
+            </Link>
+            <Link
+              to="/about"
+              className="text-gray-700 hover:text-[#5ba409] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]"
+            >
+              About
+            </Link>
             <div className="flex items-center space-x-3">
-              <button className="relative p-2 hover:bg-[#F9FBE7] rounded-full transition-colors">
+              <Link to="/cart" className="relative p-2 hover:bg-[#F9FBE7] rounded-full transition-colors block">
                 <ShoppingCart className="w-6 h-6 text-[#5ba409]" />
                 <span className="absolute -top-1 -right-1 bg-[#FFC107] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  0
+                  2
                 </span>
-              </button>
+              </Link>
               {!isLoggedIn ? (
                 <>
                   <button
@@ -88,6 +100,19 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold block"
             >
               Marketplace
+            </Link>
+            <Link
+              to="/map"
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold block"
+            >
+              Maps
+            </Link>
+            <Link
+              to="/about"
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full text-left px-4 py-3 rounded-lg hober:bf-[#F9FBE7] font-semibold block"
+            >
             </Link>
             {/* <Link
               to={userType === 'farmer' ? '/farmer-dashboard' : userType === 'admin' ? '/admin' : '/buyer-dashboard'}

@@ -43,7 +43,7 @@ const LandingPage: React.FC<LandingPageProps> = () => {
                   Browse Marketplace
                 </button>
                 <button
-                  onClick={() => navigate('/farmer-dashboard')}
+                  onClick={() => navigate('/register')}
                   className="bg-white hover:bg-gray-50 text-[#5ba409] border-2 border-[#5ba409] px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
                 >
                   Sell Your Harvest

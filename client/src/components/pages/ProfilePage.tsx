@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import Modal from '../ui/Modal';
 import { 
   User, 
   Mail, 
@@ -10,7 +12,9 @@ import {
   Bell, 
   Map, 
   Truck, 
-  Sprout
+  Sprout,
+  CheckCircle,
+  ArrowRight
 } from 'lucide-react';
 import type { UserProfile } from '../../types';
 
@@ -19,6 +23,17 @@ interface ProfilePageProps {
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const isNewUser = searchParams.get('setup') === 'true';
+  const [showSetupModal, setShowSetupModal] = useState(false);
+
+  useEffect(() => {
+    if (isNewUser) {
+      setShowSetupModal(true);
+    }
+  }, [isNewUser]);
+
   const [activeTab, setActiveTab] = useState<'personal' | 'security' | 'role'>('personal');
   const [isEditing, setIsEditing] = useState(false);
   
@@ -33,8 +48,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
     city: 'Malaybalay',
     province: 'Bukidnon',
     zipCode: '8700',
-    userType: userType as 'farmer' | 'buyer' | 'admin',
-    bio: 'Passionate about sustainable farming and bringing fresh produce directly to our community.',
+    userType: userType as 'farmer' | 'buyer' | 'admin' | 'brgy_official' | 'lgu_official',
+    bio: 'Dedicated to connecting farmers and modernizing agricultural management in our local community.',
     profileImage: '/mongg.jpg',
     farmName: userType === 'farmer' ? 'Green Valley Organic Farm' : undefined,
     farmSize: userType === 'farmer' ? '5 Hectares' : undefined,
@@ -332,6 +347,45 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
               </div>
             </div>
           );
+        } else if (userType === 'brgy_official') {
+          return (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                <MapPin className="w-6 h-6 mr-2 text-[#5ba409]" />
+                Barangay Jurisdiction
+              </h3>
+              <div className="bg-emerald-50 rounded-xl p-6">
+                <p className="text-emerald-800 font-bold mb-2">Assigned Barangay: San Jose</p>
+                <p className="text-sm text-emerald-600">You are responsible for managing farmer listings and coordinating local orders within this jurisdiction.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 border-2 border-gray-100 rounded-xl">
+                  <p className="text-xs font-black text-gray-400 uppercase">Farmers Managed</p>
+                  <p className="text-xl font-bold text-gray-900">42</p>
+                </div>
+                <div className="p-4 border-2 border-gray-100 rounded-xl">
+                  <p className="text-xs font-black text-gray-400 uppercase">Active Listings</p>
+                  <p className="text-xl font-bold text-gray-900">128</p>
+                </div>
+              </div>
+            </div>
+          );
+        } else if (userType === 'lgu_official') {
+          return (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                <Shield className="w-6 h-6 mr-2 text-indigo-600" />
+                LGU Authorization
+              </h3>
+              <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
+                <p className="text-indigo-900 font-bold mb-2">Representative ID: LGU-MLY-2026-089</p>
+                <p className="text-sm text-indigo-700">Authorized to perform platform-wide moderation, listing validation, and inter-barangay coordination.</p>
+              </div>
+              <button className="w-full py-3 bg-white border-2 border-indigo-200 text-indigo-700 rounded-xl font-bold hover:bg-indigo-50 transition-all">
+                Update Security Credentials
+              </button>
+            </div>
+          );
         } else {
           return (
             <div className="p-8 text-center bg-gray-50 rounded-2xl">
@@ -460,6 +514,70 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
           </div>
         </div>
       </div>
+
+      {/* Quick Setup Modal for New Users */}
+      <Modal
+        isOpen={showSetupModal}
+        onClose={() => setShowSetupModal(false)}
+        title="Welcome to AgriLink! 🌱"
+      >
+        <div className="space-y-6">
+          <div className="bg-green-50 p-6 rounded-3xl border border-green-100 mb-6">
+            <h3 className="text-xl font-black text-green-900 mb-2">Almost there!</h3>
+            <p className="text-green-800/70 text-sm font-medium">
+              To start buying fresh produce, we just need a few more details to help with delivery and coordination.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Mobile Number</label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="tel"
+                  placeholder="+63 9XX XXX XXXX"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-2xl outline-none font-bold transition-all"
+                  value={profile.phone}
+                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Delivery Address</label>
+              <div className="relative">
+                <MapPin className="absolute left-4 top-4 text-gray-400 w-5 h-5" />
+                <textarea
+                  placeholder="Street Name, Barangay, City, Province"
+                  rows={3}
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-2xl outline-none font-bold transition-all resize-none"
+                  value={profile.address}
+                  onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <button
+              onClick={() => setShowSetupModal(false)}
+              className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-gray-200 transition-all"
+            >
+              Skip for now
+            </button>
+            <button
+              onClick={() => {
+                setShowSetupModal(false);
+                navigate('/marketplace');
+              }}
+              className="flex-[2] py-4 bg-[#5ba409] text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-green-500/30 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+            >
+              Start Shopping <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

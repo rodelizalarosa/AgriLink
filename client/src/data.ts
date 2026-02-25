@@ -39,4 +39,6 @@ export const users: UserData[] = [
   { name: 'Maria Santos', type: 'Buyer', location: 'Davao', status: 'Active' },
   { name: 'Pedro Reyes', type: 'Farmer', location: 'Nueva Ecija', status: 'Active' },
   { name: 'Ana Garcia', type: 'Buyer', location: 'Laguna', status: 'Suspended' },
+  { name: 'Hon. Roberto Gomez', type: 'Barangay Official', location: 'San Jose, Cebu', status: 'Active' },
+  { name: 'Engr. Alicia Torres', type: 'LGU Official', location: 'Cebu City Hall', status: 'Active' },
 ];

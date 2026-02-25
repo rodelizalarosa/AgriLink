@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 
 // Components
 import Navbar from './components/common/Navbar';
@@ -20,8 +20,16 @@ import AdminOrdersPage from './components/pages/Admin/AdminOrdersPage';
 import { LoginPage } from './components/pages/LoginPage';
 import { RegisterPage } from './components/pages/RegisterPage';
 import ProfilePage from './components/pages/ProfilePage';
+import BrgyDashboard from './components/pages/Brgy/BrgyDashboard';
+import BrgyListingsPage from './components/pages/Brgy/BrgyListingsPage';
+import LGUDashboard from './components/pages/LGU/LGUDashboard';
+import LogsPage from './components/pages/LogsPage';
+import CartPage from './components/pages/Buyer/CartPage';
+import MapPage from './components/pages/Buyer/MapPage';
+import AboutPage from './components/pages/AboutPage';
+import { ArrowUp } from 'lucide-react';
 
-// Routes where the sidebar should be shown (farmer/admin only)
+// Routes where the sidebar should be shown (farmer/admin/brgy/lgu only)
 const SIDEBAR_ROUTES = [
   '/farmer-dashboard', 
   '/farmer-listings', 
@@ -29,11 +37,17 @@ const SIDEBAR_ROUTES = [
   '/product-upload', 
   '/buyer-dashboard', 
   '/admin-dashboard',
+  '/brgy-dashboard',
+  '/brgy-listings',
+  '/lgu-dashboard',
   '/admin-users',
   '/admin-listings',
   '/admin-orders',
   '/marketplace',
-  '/profile'
+  '/profile',
+  '/logs',
+  '/cart',
+  '/map'
 ];
 
 // Main App Component
@@ -41,9 +55,32 @@ const AppContent: React.FC = () => {
   const [userType, setUserType] = useState<string>('buyer');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
 
-  const showSidebar = isLoggedIn && (userType.toLowerCase() === 'farmer' || userType.toLowerCase() === 'admin') && SIDEBAR_ROUTES.includes(location.pathname);
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 400) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
+  const sidebarVisibleRoles = ['farmer', 'admin', 'brgy_official', 'lgu_official'];
+  const showSidebar = isLoggedIn && sidebarVisibleRoles.includes(userType.toLowerCase()) && SIDEBAR_ROUTES.includes(location.pathname);
 
   const handleLogin = (role: string) => {
     setUserType(role.toLowerCase());
@@ -82,7 +119,7 @@ const AppContent: React.FC = () => {
         )}
 
 
-        <main className="flex-1">
+        <main className={`flex-1 ${!showSidebar ? 'pt-20' : ''}`}>
           <RouteTransition>
             <Routes>
               <Route path="/" element={<LandingPage />} />
@@ -93,13 +130,20 @@ const AppContent: React.FC = () => {
               <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
               <Route path="/product-upload" element={<ProductUploadPage />} />
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
-              <Route path="/admin-users" element={<AdminUsersPage />} />
+              <Route path="/brgy-dashboard" element={<BrgyDashboard />} />
+              <Route path="/brgy-listings" element={<BrgyListingsPage />} />
+              <Route path="/lgu-dashboard" element={<LGUDashboard />} />
+              <Route path="/admin-users" element={<AdminUsersPage viewerRole={userType} />} />
               <Route path="/admin-listings" element={<AdminListingsPage />} />
               <Route path="/admin-orders" element={<AdminOrdersPage />} />
               <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
 
-              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/register" element={<RegisterPage onLogin={handleLogin} />} />
               <Route path="/profile" element={<ProfilePage userType={userType} />} />
+              <Route path="/logs" element={<LogsPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/map" element={<MapPage />} />
+              <Route path="/about" element={<AboutPage />} />
             </Routes>
           </RouteTransition>
         </main>
@@ -107,7 +151,7 @@ const AppContent: React.FC = () => {
 
         {/* Footer - Only show if sidebar is NOT shown for a cleaner dashboard view */}
         {!showSidebar && (
-          <footer className="bg-green-800 text-white py-12 mt-20">
+          <footer className="bg-green-800 text-white py-12">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
                   <div>
@@ -123,7 +167,7 @@ const AppContent: React.FC = () => {
                   <div>
                     <h4 className="font-bold text-lg mb-4">Quick Links</h4>
                     <ul className="space-y-2 text-green-100">
-                      <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
+                      <li><button onClick={() => navigate('/about')} className="hover:text-white transition-colors cursor-pointer">About Us</button></li>
                       <li><a href="#" className="hover:text-white transition-colors">How It Works</a></li>
                       <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
                     </ul>
@@ -141,6 +185,16 @@ const AppContent: React.FC = () => {
             </footer>
         )}
       </div>
+
+      {/* 🚀 Scroll To Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-10 right-10 z-[100] bg-[#5ba409] text-white p-4 rounded-2xl shadow-2xl hover:bg-black hover:-translate-y-2 transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 active:scale-95 group"
+        >
+          <ArrowUp className="w-6 h-6 group-hover:animate-bounce" />
+        </button>
+      )}
     </div>
   );
 };

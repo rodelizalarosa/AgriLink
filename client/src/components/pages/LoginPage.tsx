@@ -184,6 +184,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 </button>
               </p>
             </div>
+
+            <div className="mt-10 pt-8 border-t border-gray-100">
+              <p className="text-center text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Quick Login (Testing Only)</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { onLogin('brgy_official'); navigate('/brgy-dashboard'); }}
+                  className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all border border-emerald-100"
+                >
+                  Brgy Official
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { onLogin('lgu_official'); navigate('/lgu-dashboard'); }}
+                  className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all border border-indigo-100"
+                >
+                  LGU Official
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

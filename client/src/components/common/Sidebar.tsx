@@ -14,6 +14,9 @@ import {
   Menu,
   X,
   User,
+  FileText,
+  Store,
+  Map,
 } from 'lucide-react';
 import type { SidebarProps } from '../../types';
 
@@ -24,6 +27,7 @@ const farmerNav = [
   { label: 'My Listings',  icon: Package,         to: '/farmer-listings'  },
   { label: 'Add Product',  icon: Plus,            to: '/product-upload'   },
   { label: 'Orders',       icon: ShoppingCart,    to: '/farmer-orders'    },
+  { label: 'Maps',         icon: Map,             to: '/map'              },
   { label: 'Profile',      icon: User,            to: '/profile'          },
 ];
 
@@ -32,7 +36,26 @@ const adminNav = [
   { label: 'User Management',   icon: Users,           to: '/admin-users'      },
   { label: 'Inventory Moderation', icon: Package,         to: '/admin-listings'   },
   { label: 'Platform Orders',   icon: ShoppingCart,    to: '/admin-orders'     },
+  { label: 'Maps',              icon: Map,             to: '/map'              },
   { label: 'Profile',           icon: User,            to: '/profile'          },
+];
+
+const brgyNav = [
+  { label: 'Dashboard',         icon: LayoutDashboard, to: '/brgy-dashboard' },
+  { label: 'Manage Listings',   icon: Package,         to: '/brgy-listings'  },
+  { label: 'Farmer Outreach',   icon: Users,           to: '/admin-users'    },
+  { label: 'Maps',              icon: Map,             to: '/map'            },
+  { label: 'Profile',           icon: User,            to: '/profile'        },
+];
+
+const lguNav = [
+  { label: 'Dashboard',         icon: LayoutDashboard, to: '/lgu-dashboard' },
+  { label: 'Crops Management',  icon: ClipboardList,   to: '/admin-listings' },
+  { label: 'User Management',   icon: Users,           to: '/admin-users'    },
+  { label: 'Platform Orders',   icon: ShoppingCart,    to: '/admin-orders'   },
+  { label: 'Logs',              icon: FileText,        to: '/logs'           },
+  { label: 'Maps',              icon: Map,             to: '/map'            },
+  { label: 'Profile',           icon: User,            to: '/profile'        },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -43,11 +66,39 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isFarmer = userType.toLowerCase() === 'farmer';
-  const navItems = isFarmer ? farmerNav : adminNav;
+  const isAdmin = userType.toLowerCase() === 'admin';
+  const isBrgy = userType.toLowerCase() === 'brgy_official';
+  const isLGU = userType.toLowerCase() === 'lgu_official';
 
-  const roleLabel = isFarmer ? 'Farmer' : 'Admin';
-  const roleColor = isFarmer ? '#5ba409' : '#7C3AED';
-  const roleBg    = isFarmer ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800';
+  let navItems = adminNav;
+  if (isFarmer) navItems = farmerNav;
+  if (isBrgy) navItems = brgyNav;
+  if (isLGU) navItems = lguNav;
+
+  const getRoleLabel = () => {
+    if (isFarmer) return 'Farmer';
+    if (isBrgy) return 'Brgy Official';
+    if (isLGU) return 'LGU Official';
+    return 'Admin';
+  };
+
+  const getRoleColor = () => {
+    if (isFarmer) return '#5ba409';
+    if (isBrgy) return '#1B5E20';
+    if (isLGU) return '#0a3002ff';
+    return '#7C3AED';
+  };
+
+  const getRoleBg = () => {
+    if (isFarmer) return 'bg-green-100 text-green-800';
+    if (isBrgy) return 'bg-emerald-100 text-emerald-800';
+    if (isLGU) return 'bg-indigo-100 text-indigo-800';
+    return 'bg-purple-100 text-purple-800';
+  };
+
+  const roleLabel = getRoleLabel();
+  const roleColor = getRoleColor();
+  const roleBg    = getRoleBg();
 
   const handleLogout = () => {
     onLogout();
@@ -95,11 +146,11 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
               className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
               style={{ background: roleColor }}
             >
-              {isFarmer ? 'JD' : 'AD'}
+              {isFarmer ? 'JD' : (isBrgy ? 'BO' : (isLGU ? 'LO' : 'AD'))}
             </div>
             <div className="overflow-hidden">
               <p className="font-bold text-gray-900 text-sm truncate">
-                {isFarmer ? 'Juan dela Cruz' : 'Admin User'}
+                {isFarmer ? 'Juan dela Cruz' : (isBrgy ? 'Brgy. Official' : (isLGU ? 'LGU Rep' : 'Admin User'))}
               </p>
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${roleBg}`}>
                 {roleLabel}
