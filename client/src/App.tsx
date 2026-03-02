@@ -20,14 +20,18 @@ import AdminOrdersPage from './components/pages/Admin/AdminOrdersPage';
 import { LoginPage } from './components/pages/LoginPage';
 import { RegisterPage } from './components/pages/RegisterPage';
 import ProfilePage from './components/pages/ProfilePage';
-import BrgyDashboard from './components/pages/Brgy/BrgyDashboard';
-import BrgyListingsPage from './components/pages/Brgy/BrgyListingsPage';
-import LGUDashboard from './components/pages/LGU/LGUDashboard';
 import LogsPage from './components/pages/LogsPage';
+import MessagesPage from './components/pages/MessagesPage';
+import NotificationsPage from './components/pages/NotificationsPage';
+import ProductDetailPage from './components/pages/Buyer/ProductDetailPage';
 import CartPage from './components/pages/Buyer/CartPage';
+import CheckoutPage from './components/pages/Buyer/CheckoutPage';
 import MapPage from './components/pages/Buyer/MapPage';
 import AboutPage from './components/pages/AboutPage';
 import { ArrowUp } from 'lucide-react';
+import BrgyDashboard from './components/pages/Brgy/BrgyDashboard';
+import BrgyListingsPage from './components/pages/Brgy/BrgyListingsPage';
+import BrgyAwardBadgePage from './components/pages/Brgy/BrgyAwardBadgePage';
 
 // Routes where the sidebar should be shown (farmer/admin/brgy/lgu only)
 const SIDEBAR_ROUTES = [
@@ -39,7 +43,7 @@ const SIDEBAR_ROUTES = [
   '/admin-dashboard',
   '/brgy-dashboard',
   '/brgy-listings',
-  '/lgu-dashboard',
+  '/brgy-award-badge',
   '/admin-users',
   '/admin-listings',
   '/admin-orders',
@@ -47,7 +51,9 @@ const SIDEBAR_ROUTES = [
   '/profile',
   '/logs',
   '/cart',
-  '/map'
+  '/map',
+  '/messages',
+  '/notifications'
 ];
 
 // Main App Component
@@ -72,6 +78,40 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // 📝 Dynamic Page Titles
+  useEffect(() => {
+    const routeTitles: { [key: string]: string } = {
+      '/': 'AgriLink | Fresh Farm Produce',
+      '/marketplace': 'Marketplace | AgriLink',
+      '/farmer-dashboard': 'Farmer Dashboard | AgriLink',
+      '/farmer-listings': 'My Listings | AgriLink',
+      '/farmer-orders': 'Farmer Orders | AgriLink',
+      '/buyer-dashboard': 'Dashboard | AgriLink',
+      '/product-upload': 'Upload Product | AgriLink',
+      '/admin-dashboard': 'Admin Dashboard | AgriLink',
+      '/brgy-dashboard': 'Barangay Dashboard | AgriLink',
+      '/brgy-listings': 'Barangay Listings | AgriLink',
+      '/brgy-award-badge': 'Award Trust Badge | AgriLink',
+      '/lgu-dashboard': 'LGU Dashboard | AgriLink',
+      '/admin-users': 'Manage Users | AgriLink',
+      '/admin-listings': 'Manage Listings | AgriLink',
+      '/admin-orders': 'Manage Orders | AgriLink',
+      '/login': 'Login | AgriLink',
+      '/register': 'Join AgriLink | Register',
+      '/profile': 'My Profile | AgriLink',
+      '/logs': 'Activity Logs | AgriLink',
+      '/cart': 'Shopping Basket | AgriLink',
+      '/checkout': 'Checkout | AgriLink',
+      '/map': 'Farmer Locations | AgriLink',
+      '/messages': 'Messages | AgriLink',
+      '/notifications': 'Activities | AgriLink',
+      '/about': 'About Us | AgriLink',
+    };
+
+    const currentTitle = routeTitles[location.pathname] || 'AgriLink';
+    document.title = currentTitle;
+  }, [location]);
+
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -79,7 +119,7 @@ const AppContent: React.FC = () => {
     });
   };
 
-  const sidebarVisibleRoles = ['farmer', 'admin', 'brgy_official', 'lgu_official'];
+  const sidebarVisibleRoles = ['farmer', 'admin', 'brgy_official'];
   const showSidebar = isLoggedIn && sidebarVisibleRoles.includes(userType.toLowerCase()) && SIDEBAR_ROUTES.includes(location.pathname);
 
   const handleLogin = (role: string) => {
@@ -129,10 +169,11 @@ const AppContent: React.FC = () => {
               <Route path="/farmer-orders" element={<FarmerOrdersPage />} />
               <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
               <Route path="/product-upload" element={<ProductUploadPage />} />
+              <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
               <Route path="/brgy-dashboard" element={<BrgyDashboard />} />
               <Route path="/brgy-listings" element={<BrgyListingsPage />} />
-              <Route path="/lgu-dashboard" element={<LGUDashboard />} />
+              <Route path="/brgy-award-badge" element={<BrgyAwardBadgePage />} />
               <Route path="/admin-users" element={<AdminUsersPage viewerRole={userType} />} />
               <Route path="/admin-listings" element={<AdminListingsPage />} />
               <Route path="/admin-orders" element={<AdminOrdersPage />} />
@@ -140,9 +181,13 @@ const AppContent: React.FC = () => {
 
               <Route path="/register" element={<RegisterPage onLogin={handleLogin} />} />
               <Route path="/profile" element={<ProfilePage userType={userType} />} />
+              <Route path="/profile/:id" element={<ProfilePage userType={userType} />} />
               <Route path="/logs" element={<LogsPage />} />
               <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout/:id" element={<CheckoutPage />} />
               <Route path="/map" element={<MapPage />} />
+              <Route path="/messages" element={<MessagesPage userType={userType} />} />
+              <Route path="/notifications" element={<NotificationsPage userType={userType} />} />
               <Route path="/about" element={<AboutPage />} />
             </Routes>
           </RouteTransition>

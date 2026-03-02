@@ -17,8 +17,12 @@ import {
   FileText,
   Store,
   Map,
+  ShieldCheck,
+  MessageSquare,
+  Bell,
 } from 'lucide-react';
 import type { SidebarProps } from '../../types';
+import { sampleConversations, farmerNotifications, farmerOrders } from '../../data';
 
 // ─── Nav config ─────────────────────────────────────────────────────────────
 
@@ -28,35 +32,30 @@ const farmerNav = [
   { label: 'Add Product',  icon: Plus,            to: '/product-upload'   },
   { label: 'Orders',       icon: ShoppingCart,    to: '/farmer-orders'    },
   { label: 'Maps',         icon: Map,             to: '/map'              },
+  { label: 'Messages',     icon: MessageSquare,   to: '/messages'         },
+  { label: 'Notifications',icon: Bell,            to: '/notifications'    },
   { label: 'Profile',      icon: User,            to: '/profile'          },
 ];
 
 const adminNav = [
-  { label: 'Dashboard',         icon: LayoutDashboard, to: '/admin-dashboard' },
-  { label: 'User Management',   icon: Users,           to: '/admin-users'      },
-  { label: 'Inventory Moderation', icon: Package,         to: '/admin-listings'   },
-  { label: 'Platform Orders',   icon: ShoppingCart,    to: '/admin-orders'     },
+  { label: 'Dashboard',            icon: LayoutDashboard, to: '/admin-dashboard' },
+  { label: 'User Management',      icon: Users,           to: '/admin-users'     },
+  { label: 'Inventory Moderation', icon: Package,         to: '/admin-listings'  },
+  { label: 'Platform Orders',      icon: ShoppingCart,    to: '/admin-orders'    },
+  { label: 'Logs',                 icon: FileText,        to: '/logs'            },
+  { label: 'Maps',                 icon: Map,             to: '/map'             },
+  { label: 'Profile',              icon: User,            to: '/profile'         },
+];
+
+const brgyNav = [
+  { label: 'Dashboard',         icon: LayoutDashboard, to: '/brgy-dashboard'   },
+  { label: 'Listings & Badges', icon: Package,         to: '/brgy-listings'    },
+  { label: 'Farmer Outreach',   icon: Users,           to: '/admin-users'      },
   { label: 'Maps',              icon: Map,             to: '/map'              },
   { label: 'Profile',           icon: User,            to: '/profile'          },
 ];
 
-const brgyNav = [
-  { label: 'Dashboard',         icon: LayoutDashboard, to: '/brgy-dashboard' },
-  { label: 'Manage Listings',   icon: Package,         to: '/brgy-listings'  },
-  { label: 'Farmer Outreach',   icon: Users,           to: '/admin-users'    },
-  { label: 'Maps',              icon: Map,             to: '/map'            },
-  { label: 'Profile',           icon: User,            to: '/profile'        },
-];
 
-const lguNav = [
-  { label: 'Dashboard',         icon: LayoutDashboard, to: '/lgu-dashboard' },
-  { label: 'Crops Management',  icon: ClipboardList,   to: '/admin-listings' },
-  { label: 'User Management',   icon: Users,           to: '/admin-users'    },
-  { label: 'Platform Orders',   icon: ShoppingCart,    to: '/admin-orders'   },
-  { label: 'Logs',              icon: FileText,        to: '/logs'           },
-  { label: 'Maps',              icon: Map,             to: '/map'            },
-  { label: 'Profile',           icon: User,            to: '/profile'        },
-];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -68,31 +67,41 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
   const isFarmer = userType.toLowerCase() === 'farmer';
   const isAdmin = userType.toLowerCase() === 'admin';
   const isBrgy = userType.toLowerCase() === 'brgy_official';
-  const isLGU = userType.toLowerCase() === 'lgu_official';
 
   let navItems = adminNav;
   if (isFarmer) navItems = farmerNav;
   if (isBrgy) navItems = brgyNav;
-  if (isLGU) navItems = lguNav;
+
+  // ─── Badge Counts ────────────────────────────────────────────────────────
+  const pendingOrdersCount = isFarmer
+    ? farmerOrders.filter(o => o.status === 'Pending').length
+    : 0;
+  const unreadMsgCount = sampleConversations.reduce((acc, c) => acc + c.unreadCount, 0);
+  const unreadNotifCount = isFarmer
+    ? farmerNotifications.filter(n => n.status === 'unread').length
+    : 0;
+
+  // Map route → badge count (only non-zero values show)
+  const badgeMap: Record<string, number> = {};
+  if (pendingOrdersCount > 0) badgeMap['/farmer-orders'] = pendingOrdersCount;
+  if (unreadMsgCount > 0) badgeMap['/messages'] = unreadMsgCount;
+  if (unreadNotifCount > 0) badgeMap['/notifications'] = unreadNotifCount;
 
   const getRoleLabel = () => {
     if (isFarmer) return 'Farmer';
     if (isBrgy) return 'Brgy Official';
-    if (isLGU) return 'LGU Official';
     return 'Admin';
   };
 
   const getRoleColor = () => {
     if (isFarmer) return '#5ba409';
     if (isBrgy) return '#1B5E20';
-    if (isLGU) return '#0a3002ff';
     return '#7C3AED';
   };
 
   const getRoleBg = () => {
     if (isFarmer) return 'bg-green-100 text-green-800';
     if (isBrgy) return 'bg-emerald-100 text-emerald-800';
-    if (isLGU) return 'bg-indigo-100 text-indigo-800';
     return 'bg-purple-100 text-purple-800';
   };
 
@@ -123,7 +132,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
             }`}
           />
           {!collapsed && (
-            <span className="text-xl font-black text-[#2E7D32] whitespace-nowrap">
+            <span className="text-xl font-black text-green-800 whitespace-nowrap">
               AgriLink
             </span>
           )}
@@ -146,11 +155,11 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
               className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
               style={{ background: roleColor }}
             >
-              {isFarmer ? 'JD' : (isBrgy ? 'BO' : (isLGU ? 'LO' : 'AD'))}
+              {isFarmer ? 'JD' : (isBrgy ? 'BO' : 'AD')}
             </div>
             <div className="overflow-hidden">
               <p className="font-bold text-gray-900 text-sm truncate">
-                {isFarmer ? 'Juan dela Cruz' : (isBrgy ? 'Brgy. Official' : (isLGU ? 'LGU Rep' : 'Admin User'))}
+                {isFarmer ? 'Juan dela Cruz' : (isBrgy ? 'Brgy. Official' : 'Admin User')}
               </p>
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${roleBg}`}>
                 {roleLabel}
@@ -164,6 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-hidden">
         {navItems.map(({ label, icon: Icon, to }) => {
           const active = location.pathname === to;
+          const badge = badgeMap[to] ?? 0;
           return (
             <Link
               key={label}
@@ -171,7 +181,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
               onClick={() => setMobileOpen(false)}
               title={collapsed ? label : undefined}
               className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150
+                relative flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150
                 ${active
                   ? 'text-white shadow-md'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}
@@ -179,8 +189,27 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
               `}
               style={active ? { background: roleColor } : {}}
             >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && <span>{label}</span>}
+              {/* Icon with collapsed badge */}
+              <span className="relative shrink-0">
+                <Icon className="w-5 h-5" />
+                {collapsed && badge > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 shadow-md animate-pulse">
+                    {badge > 9 ? '9+' : badge}
+                  </span>
+                )}
+              </span>
+
+              {/* Label + inline badge when expanded */}
+              {!collapsed && (
+                <>
+                  <span className="flex-1">{label}</span>
+                  {badge > 0 && (
+                    <span className="min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1.5 shadow-md animate-pulse">
+                      {badge > 9 ? '9+' : badge}
+                    </span>
+                  )}
+                </>
+              )}
             </Link>
           );
         })}
@@ -252,8 +281,8 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
           className="
             hidden md:flex absolute -right-3 top-6
             w-6 h-10 bg-white border border-gray-200 shadow-md rounded-full
-            items-center justify-center text-gray-400 hover:text-[#5ba409]
-            hover:border-[#5ba409] transition-colors z-10
+            items-center justify-center text-gray-400 hover:text-green-600
+            hover:border-green-600 transition-colors z-10
           "
         >
           {collapsed

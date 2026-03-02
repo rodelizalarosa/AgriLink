@@ -10,6 +10,7 @@ export interface Product {
   stock: number;
   image: string;
   category: string;
+  badges?: string[];
 }
 
 export interface DashboardCardProps {
@@ -80,6 +81,7 @@ export interface UserData {
   type: string;
   location: string;
   status: string;
+  badges?: string[];
 }
 
 export interface FormData {
@@ -136,4 +138,35 @@ export interface UserProfile {
   farmName?: string;
   farmSize?: string;
   deliveryRange?: string;
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  timestamp: string;
+  isRead: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  participantId: string;
+  participantName: string;
+  participantType: string;
+  participantImage?: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'order' | 'message' | 'system';
+  status: 'unread' | 'read';
+  timestamp: string;
+  link?: string;
 }

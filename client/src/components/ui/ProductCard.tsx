@@ -2,9 +2,16 @@ import React from 'react';
 import { ShoppingCart, User, MapPin, Star, Heart, Zap, ShieldCheck } from 'lucide-react';
 import type { ProductCardProps } from '../../types';
 
+import { useNavigate } from 'react-router-dom';
+
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const navigate = useNavigate();
+
   return (
-    <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-gray-200/50 hover:shadow-green-900/10 transition-all duration-500 overflow-hidden group border border-gray-100 hover:border-green-100 transform hover:-translate-y-2 relative">
+    <div 
+      onClick={() => navigate(`/product/${product.id}`)}
+      className="bg-white rounded-[2.5rem] shadow-2xl shadow-gray-200/50 hover:shadow-green-900/10 transition-all duration-500 overflow-hidden group border border-gray-100 hover:border-green-100 transform hover:-translate-y-2 relative cursor-pointer"
+    >
       {/* 🖼️ Image Container */}
       <div className="relative h-64 overflow-hidden bg-gray-50">
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent z-10"></div>
@@ -16,12 +23,25 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                <Zap className="w-3 h-3 fill-current" /> Low Stock
              </div>
            )}
-           <div className="bg-white/90 backdrop-blur-md text-[#5ba409] px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border border-green-100 flex items-center gap-1.5">
-             <ShieldCheck className="w-3 h-3" /> Verified Farm
-           </div>
+           {product.badges && product.badges.map((badge, idx) => (
+             <div key={idx} className="bg-white/90 backdrop-blur-md text-[#5ba409] px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border border-green-100 flex items-center gap-1.5">
+               <ShieldCheck className="w-3 h-3" /> {badge}
+             </div>
+           ))}
+           {!product.badges && (
+             <div className="bg-white/90 backdrop-blur-md text-[#5ba409] px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border border-green-100 flex items-center gap-1.5">
+               <ShieldCheck className="w-3 h-3" /> Community Verified
+             </div>
+           )}
         </div>
 
-        <button className="absolute top-5 right-5 z-20 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-white transition-all shadow-lg active:scale-95">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            // Handle wishlist logic here later
+          }}
+          className="absolute top-5 right-5 z-20 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-white transition-all shadow-lg active:scale-95"
+        >
            <Heart className="w-5 h-5" />
         </button>
 
@@ -79,7 +99,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </div>
           </div>
           
-          <button className="w-14 h-14 bg-[#5ba409] hover:bg-[#1B5E20] text-white rounded-2xl shadow-xl shadow-green-500/30 hover:shadow-green-900/40 flex items-center justify-center transition-all active:scale-95 group/btn overflow-hidden relative">
+          <button 
+             onClick={(e) => {
+               e.stopPropagation();
+               // Handle add to cart logic here later
+             }}
+             className="w-14 h-14 bg-[#5ba409] hover:bg-[#1B5E20] text-white rounded-2xl shadow-xl shadow-green-500/30 hover:shadow-green-900/40 flex items-center justify-center transition-all active:scale-95 group/btn overflow-hidden relative"
+          >
              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300"></div>
              <ShoppingCart className="w-6 h-6 relative z-10" />
           </button>

@@ -123,11 +123,11 @@ const MarketplacePage: React.FC = () => {
               {/* Status Filters */}
               <div className="space-y-4">
                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Product Type</p>
-                 {[
-                   { label: 'Organic Certified', count: 42 },
-                   { label: 'Bulk Discount', count: 18 },
-                   { label: 'Express Delivery', count: 25 },
-                 ].map((filter) => (
+                  {[
+                    { label: 'Brgy. Verified', count: 42 },
+                    { label: 'Organic Certified', count: 18 },
+                    { label: 'Top Rated', count: 25 },
+                  ].map((filter) => (
                    <label key={filter.label} className="flex items-center justify-between group cursor-pointer hover:text-[#5ba409] transition-colors">
                      <div className="flex items-center gap-3">
                        <input type="checkbox" className="w-5 h-5 rounded border-2 border-gray-200 text-[#5ba409] focus:ring-[#5ba409] accent-[#5ba409]" />

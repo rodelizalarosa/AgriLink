@@ -197,10 +197,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { onLogin('lgu_official'); navigate('/lgu-dashboard'); }}
-                  className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all border border-indigo-100"
+                  onClick={() => { onLogin('admin'); navigate('/admin-dashboard'); }}
+                  className="px-4 py-2 bg-purple-50 text-purple-700 rounded-xl text-xs font-bold hover:bg-purple-100 transition-all border border-purple-100"
                 >
-                  LGU Official
+                  Admin
                 </button>
               </div>
             </div>

@@ -18,14 +18,13 @@ const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ viewerRole }) => {
     ? users.filter(user => user.type === 'Farmer')
     : users;
 
-  const isLGU = viewerRole?.toLowerCase() === 'lgu_official';
+  const isAdmin = viewerRole?.toLowerCase() === 'admin';
 
   // Stats calculation
-  const totalUsers = users.length;
   const totalFarmers = users.filter(u => u.type === 'Farmer').length;
   const totalBuyers = users.filter(u => u.type === 'Buyer').length;
   const totalBrgy = users.filter(u => u.type === 'Barangay Official' || u.type === 'Brgy Official').length;
-  const totalLgu = users.filter(u => u.type === 'LGU Official').length;
+  const totalAdmins = users.filter(u => u.type === 'Admin').length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F1F8E9] via-white to-[#E8F5E9] p-6 md:p-10">
@@ -53,8 +52,8 @@ const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ viewerRole }) => {
           </button>
         </div>
 
-        {/* Quick Stats - Only for Admin/LGU */}
-        {(isLGU || !isBrgy) && (
+        {/* Quick Stats — Admin only */}
+        {!isBrgy && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             <DashboardCard
               icon={User}
@@ -82,11 +81,11 @@ const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ viewerRole }) => {
             />
             <DashboardCard
               icon={ShieldAlert}
-              title="LGU Officials"
-              value={totalLgu.toString()}
-              subtitle="Municipal Governance"
-              color="#006064"
-              trend="Strategic oversight"
+              title="Admins"
+              value={totalAdmins.toString()}
+              subtitle="Platform administrators"
+              color="#7C3AED"
+              trend="System oversight"
             />
           </div>
         )}
@@ -141,13 +140,13 @@ const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ viewerRole }) => {
                     <td className="py-8 px-10">
                       <div className="flex items-center gap-5">
                         <div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center font-black text-white shadow-lg transition-transform group-hover:scale-110 ${
-                           user.type === 'Farmer' ? 'bg-[#5ba409] shadow-green-500/20' : 
-                           user.type === 'LGU Official' ? 'bg-[#006064] shadow-cyan-500/20' :
-                           user.type === 'Barangay Official' || user.type === 'Brgy Official' ? 'bg-[#F57C00] shadow-orange-500/20' :
+                           user.type === 'Farmer' ? 'bg-green-600 shadow-green-500/20' :
+                           user.type === 'Admin' ? 'bg-purple-600 shadow-purple-500/20' :
+                           user.type === 'Barangay Official' || user.type === 'Brgy Official' ? 'bg-orange-500 shadow-orange-500/20' :
                            'bg-blue-500 shadow-blue-500/20'
                         }`}>
-                          {user.type === 'Farmer' ? <User className="w-6 h-6" /> : 
-                           user.type === 'LGU Official' ? <Shield className="w-6 h-6" /> :
+                          {user.type === 'Farmer' ? <User className="w-6 h-6" /> :
+                           user.type === 'Admin' ? <Shield className="w-6 h-6" /> :
                            user.type === 'Barangay Official' || user.type === 'Brgy Official' ? <Shield className="w-6 h-6" /> :
                            <Users className="w-6 h-6" />}
                         </div>
@@ -162,8 +161,8 @@ const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ viewerRole }) => {
                     <td className="py-8 px-10">
                       <div className="flex justify-center">
                         <span className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest ${
-                          user.type === 'Farmer' ? 'bg-green-100 text-green-700' : 
-                          user.type === 'LGU Official' ? 'bg-cyan-100 text-cyan-700' :
+                          user.type === 'Farmer' ? 'bg-green-100 text-green-700' :
+                          user.type === 'Admin' ? 'bg-purple-100 text-purple-700' :
                           user.type === 'Barangay Official' || user.type === 'Brgy Official' ? 'bg-orange-100 text-orange-700' :
                           'bg-blue-100 text-blue-700'
                         }`}>
