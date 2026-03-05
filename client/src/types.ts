@@ -24,6 +24,7 @@ export interface DashboardCardProps {
 
 export interface ProductCardProps {
   product: Product;
+  onClick?: () => void;
 }
 
 export interface NavbarProps {
@@ -36,6 +37,8 @@ export interface NavbarProps {
 
 export interface SidebarProps {
   userType: string;
+  firstName?: string;
+  lastName?: string;
   setUserType: (type: string) => void;
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
@@ -49,7 +52,7 @@ export interface FarmerDashboardProps {
 }
 
 export interface LoginPageProps {
-  onLogin: (role: string) => void;
+  onLogin: (role: string, userData?: any, token?: string) => void;
 }
 
 
@@ -92,6 +95,7 @@ export interface FormData {
   unit: string;
   description: string;
   location: string;
+  harvest_date: string;
 }
 
 export interface LoginFormData {

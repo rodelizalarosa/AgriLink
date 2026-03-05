@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, User, CheckCircle, ShoppingCart, Sprout } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, User, CheckCircle, ShoppingCart, Sprout, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { RegisterFormData } from '../../types';
 import { API_BASE_URL } from '../../api/apiConfig';
+import { useToast } from '../ui/Toast';
 
 
 interface RegisterPageProps {
@@ -11,6 +12,7 @@ interface RegisterPageProps {
 
 export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState<RegisterFormData>({
     firstName: '',
     lastName: '',
@@ -24,6 +26,53 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
+  const [isEmailAvailable, setIsEmailAvailable] = useState<boolean | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkEmail = async () => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!formData.email) {
+        setIsEmailAvailable(null);
+        setErrors(prev => {
+          const { email, ...rest } = prev as any;
+          return rest;
+        });
+        return;
+      }
+
+      if (!emailRegex.test(formData.email)) {
+        setIsEmailAvailable(null);
+        setErrors(prev => ({ ...prev, email: 'Please input a valid email format' } as any));
+        return;
+      }
+
+      setIsCheckingEmail(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/check-email?email=${encodeURIComponent(formData.email)}`);
+        const data = await response.json();
+        if (response.ok) {
+          setIsEmailAvailable(!data.exists);
+          if (data.exists) {
+            setErrors(prev => ({ ...prev, email: 'Email already registered' } as any));
+          } else {
+            setErrors(prev => {
+              const { email, ...rest } = prev as any;
+              return rest;
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Email check failed:', err);
+      } finally {
+        setIsCheckingEmail(false);
+      }
+    };
+
+    const timer = setTimeout(checkEmail, 500);
+    return () => clearTimeout(timer);
+  }, [formData.email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +88,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
     if (formData.password !== formData.confirmPassword)
       newErrors.confirmPassword = 'Passwords do not match' as any;
     if (!formData.agreeToTerms) newErrors.agreeToTerms = 'You must agree to the terms' as any;
+    if (isEmailAvailable === false) newErrors.email = 'Email already registered' as any;
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -64,37 +114,21 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
       const data = await response.json();
 
       if (!response.ok) {
+        toast.error(data.message || 'Registration failed');
         setErrors({ email: data.message || 'Registration failed' } as any);
         return;
       }
 
+      toast.success('Registration successful! Please check your email for confirmation.');
 
-      // 2️⃣ Auto-login after successful registration
-      const loginResponse = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
-
-      const loginData = await loginResponse.json();
-
-      if (loginResponse.ok) {
-        const role = loginData.result.role_name.toLowerCase();
-        onLogin(role);
-        // Special redirect for new signups to complete their profile
-        navigate('/profile?setup=true');
-      } else {
-        // If auto-login fails for some reason, just go to login page
+      // 2️⃣ Redirect to login as requested (removed auto-login)
+      setTimeout(() => {
         navigate('/login');
-      }
-
+      }, 2000);
 
     } catch (err) {
-      setErrors({ email: 'Something went wrong. Please try again.' } as any);
+      toast.error('Service temporarily unavailable. Please check your connection and try again.');
+      setErrors({ email: 'Service temporarily unavailable. Please try again later.' } as any);
     }
 
   };
@@ -186,9 +220,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
                       placeholder="John"
                       value={formData.firstName}
                       onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                        errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
-                      }`}
+                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.firstName ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
+                        }`}
                     />
                   </div>
                   {errors.firstName && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.firstName}</p>}
@@ -202,9 +235,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
                       placeholder="Doe"
                       value={formData.lastName}
                       onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                        errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
-                      }`}
+                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.lastName ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
+                        }`}
                     />
                   </div>
                   {errors.lastName && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.lastName}</p>}
@@ -220,10 +252,14 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
                     placeholder="your.email@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
-                    }`}
+                    className={`w-full pl-12 pr-10 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.email ? 'border-red-500' : isEmailAvailable === true ? 'border-[#5ba409]' : 'border-gray-200 focus:border-[#5ba409]'
+                      }`}
                   />
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center">
+                    {isCheckingEmail && <div className="w-4 h-4 border-2 border-[#5ba409] border-t-transparent rounded-full animate-spin"></div>}
+                    {!isCheckingEmail && isEmailAvailable === true && <CheckCircle className="w-5 h-5 text-[#5ba409]" />}
+                    {!isCheckingEmail && (isEmailAvailable === false || errors.email) && <AlertCircle className="w-5 h-5 text-red-500" />}
+                  </div>
                 </div>
                 {errors.email && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.email}</p>}
               </div>
@@ -234,15 +270,13 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, userType: 'buyer' })}
-                    className={`p-5 rounded-2xl border-2 transition-all flex items-center gap-4 text-left group ${
-                      formData.userType === 'buyer'
-                        ? 'border-[#5ba409] bg-green-50/50 shadow-lg shadow-green-900/5'
-                        : 'border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white'
-                    }`}
+                    className={`p-5 rounded-2xl border-2 transition-all flex items-center gap-4 text-left group ${formData.userType === 'buyer'
+                      ? 'border-[#5ba409] bg-green-50/50 shadow-lg shadow-green-900/5'
+                      : 'border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white'
+                      }`}
                   >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
-                      formData.userType === 'buyer' ? 'bg-[#5ba409] text-white' : 'bg-white text-gray-400 group-hover:text-[#5ba409]'
-                    }`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${formData.userType === 'buyer' ? 'bg-[#5ba409] text-white' : 'bg-white text-gray-400 group-hover:text-[#5ba409]'
+                      }`}>
                       <ShoppingCart className="w-6 h-6" />
                     </div>
                     <div>
@@ -254,15 +288,13 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, userType: 'farmer' })}
-                    className={`p-5 rounded-2xl border-2 transition-all flex items-center gap-4 text-left group ${
-                      formData.userType === 'farmer'
-                        ? 'border-[#5ba409] bg-green-50/50 shadow-lg shadow-green-900/5'
-                        : 'border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white'
-                    }`}
+                    className={`p-5 rounded-2xl border-2 transition-all flex items-center gap-4 text-left group ${formData.userType === 'farmer'
+                      ? 'border-[#5ba409] bg-green-50/50 shadow-lg shadow-green-900/5'
+                      : 'border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white'
+                      }`}
                   >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
-                      formData.userType === 'farmer' ? 'bg-[#5ba409] text-white' : 'bg-white text-gray-400 group-hover:text-[#5ba409]'
-                    }`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${formData.userType === 'farmer' ? 'bg-[#5ba409] text-white' : 'bg-white text-gray-400 group-hover:text-[#5ba409]'
+                      }`}>
                       <Sprout className="w-6 h-6" />
                     </div>
                     <div>
@@ -282,9 +314,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
-                    }`}
+                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
+                      }`}
                   />
                   <button
                     type="button"
@@ -306,9 +337,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
                     placeholder="••••••••"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.confirmPassword ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
-                    }`}
+                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.confirmPassword ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
+                      }`}
                   />
                   <button
                     type="button"

@@ -23,46 +23,50 @@ import {
 } from 'lucide-react';
 import type { SidebarProps } from '../../types';
 import { sampleConversations, farmerNotifications, farmerOrders } from '../../data';
+import LogoutConfirmationModal from '../ui/LogoutConfirmationModal';
 
 // ─── Nav config ─────────────────────────────────────────────────────────────
 
 const farmerNav = [
-  { label: 'Dashboard',    icon: LayoutDashboard, to: '/farmer-dashboard' },
-  { label: 'My Listings',  icon: Package,         to: '/farmer-listings'  },
-  { label: 'Add Product',  icon: Plus,            to: '/product-upload'   },
-  { label: 'Orders',       icon: ShoppingCart,    to: '/farmer-orders'    },
-  { label: 'Maps',         icon: Map,             to: '/map'              },
-  { label: 'Messages',     icon: MessageSquare,   to: '/messages'         },
-  { label: 'Notifications',icon: Bell,            to: '/notifications'    },
-  { label: 'Profile',      icon: User,            to: '/profile'          },
+  { label: 'Dashboard', icon: LayoutDashboard, to: '/farmer/dashboard' },
+  { label: 'Marketplace', icon: Store, to: '/buyer/marketplace' },
+  { label: 'My Listings', icon: Package, to: '/farmer/listings' },
+  { label: 'Orders', icon: ShoppingCart, to: '/farmer/orders' },
+  { label: 'Maps', icon: Map, to: '/buyer/map' },
+  { label: 'Messages', icon: MessageSquare, to: '/messages' },
+  { label: 'Notifications', icon: Bell, to: '/notifications' },
+  { label: 'Profile', icon: User, to: '/profile' },
 ];
 
 const adminNav = [
-  { label: 'Dashboard',            icon: LayoutDashboard, to: '/admin-dashboard' },
-  { label: 'User Management',      icon: Users,           to: '/admin-users'     },
-  { label: 'Inventory Moderation', icon: Package,         to: '/admin-listings'  },
-  { label: 'Platform Orders',      icon: ShoppingCart,    to: '/admin-orders'    },
-  { label: 'Logs',                 icon: FileText,        to: '/logs'            },
-  { label: 'Maps',                 icon: Map,             to: '/map'             },
-  { label: 'Profile',              icon: User,            to: '/profile'         },
+  { label: 'Dashboard', icon: LayoutDashboard, to: '/admin/dashboard' },
+  { label: 'Marketplace', icon: Store, to: '/buyer/marketplace' },
+  { label: 'User Management', icon: Users, to: '/admin/users' },
+  { label: 'Inventory Moderation', icon: Package, to: '/admin/listings' },
+  { label: 'Platform Orders', icon: ShoppingCart, to: '/admin/orders' },
+  { label: 'Logs', icon: FileText, to: '/logs' },
+  { label: 'Maps', icon: Map, to: '/buyer/map' },
+  { label: 'Profile', icon: User, to: '/profile' },
 ];
 
 const brgyNav = [
-  { label: 'Dashboard',         icon: LayoutDashboard, to: '/brgy-dashboard'   },
-  { label: 'Listings & Badges', icon: Package,         to: '/brgy-listings'    },
-  { label: 'Farmer Outreach',   icon: Users,           to: '/admin-users'      },
-  { label: 'Maps',              icon: Map,             to: '/map'              },
-  { label: 'Profile',           icon: User,            to: '/profile'          },
+  { label: 'Dashboard', icon: LayoutDashboard, to: '/brgy/dashboard' },
+  { label: 'Marketplace', icon: Store, to: '/buyer/marketplace' },
+  { label: 'Listings & Badges', icon: Package, to: '/brgy/listings' },
+  { label: 'Farmer Outreach', icon: Users, to: '/admin/users' },
+  { label: 'Maps', icon: Map, to: '/buyer/map' },
+  { label: 'Profile', icon: User, to: '/profile' },
 ];
 
 
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, setCollapsed, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ userType, firstName, lastName, setUserType, collapsed, setCollapsed, onLogout }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const isFarmer = userType.toLowerCase() === 'farmer';
   const isAdmin = userType.toLowerCase() === 'admin';
@@ -73,30 +77,21 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
   if (isBrgy) navItems = brgyNav;
 
   // ─── Badge Counts ────────────────────────────────────────────────────────
-  const pendingOrdersCount = isFarmer
-    ? farmerOrders.filter(o => o.status === 'Pending').length
-    : 0;
-  const unreadMsgCount = sampleConversations.reduce((acc, c) => acc + c.unreadCount, 0);
-  const unreadNotifCount = isFarmer
-    ? farmerNotifications.filter(n => n.status === 'unread').length
-    : 0;
-
-  // Map route → badge count (only non-zero values show)
+  // All static badges removed to avoid confusion.
   const badgeMap: Record<string, number> = {};
-  if (pendingOrdersCount > 0) badgeMap['/farmer-orders'] = pendingOrdersCount;
-  if (unreadMsgCount > 0) badgeMap['/messages'] = unreadMsgCount;
-  if (unreadNotifCount > 0) badgeMap['/notifications'] = unreadNotifCount;
 
   const getRoleLabel = () => {
     if (isFarmer) return 'Farmer';
     if (isBrgy) return 'Brgy Official';
-    return 'Admin';
+    if (isAdmin) return 'Admin';
+    return 'Buyer';
   };
 
   const getRoleColor = () => {
     if (isFarmer) return '#5ba409';
     if (isBrgy) return '#1B5E20';
-    return '#7C3AED';
+    if (isAdmin) return '#7C3AED';
+    return '#2563EB'; // Blue for Buyer
   };
 
   const getRoleBg = () => {
@@ -107,9 +102,13 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
 
   const roleLabel = getRoleLabel();
   const roleColor = getRoleColor();
-  const roleBg    = getRoleBg();
+  const roleBg = getRoleBg();
 
-  const handleLogout = () => {
+  const handleLogoutClick = () => {
+    setIsLogoutModalOpen(true);
+  };
+
+  const confirmLogout = () => {
     onLogout();
     navigate('/');
   };
@@ -127,9 +126,8 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
           <img
             src="/src/assets/logo/AgriLinkGREEN.png"
             alt="AgriLink"
-            className={`object-contain flex-shrink-0 transition-all duration-300 ${
-              collapsed ? 'w-12 h-12' : 'w-10 h-10'
-            }`}
+            className={`object-contain flex-shrink-0 transition-all duration-300 ${collapsed ? 'w-12 h-12' : 'w-10 h-10'
+              }`}
           />
           {!collapsed && (
             <span className="text-xl font-black text-green-800 whitespace-nowrap">
@@ -145,9 +143,9 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
           <div
             className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
             style={{ background: roleColor }}
-            title={roleLabel}
+            title={firstName && lastName ? `${firstName} ${lastName}` : roleLabel}
           >
-            {roleLabel[0]}
+            {firstName ? firstName[0] : roleLabel[0]}
           </div>
         ) : (
           <div className="flex items-center gap-3">
@@ -155,11 +153,11 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
               className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
               style={{ background: roleColor }}
             >
-              {isFarmer ? 'JD' : (isBrgy ? 'BO' : 'AD')}
+              {firstName && lastName ? `${firstName[0]}${lastName[0]}` : (isFarmer ? 'U' : (isBrgy ? 'B' : 'A'))}
             </div>
             <div className="overflow-hidden">
               <p className="font-bold text-gray-900 text-sm truncate">
-                {isFarmer ? 'Juan dela Cruz' : (isBrgy ? 'Brgy. Official' : 'Admin User')}
+                {firstName && lastName ? `${firstName} ${lastName}` : 'System User'}
               </p>
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${roleBg}`}>
                 {roleLabel}
@@ -174,11 +172,18 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
         {navItems.map(({ label, icon: Icon, to }) => {
           const active = location.pathname === to;
           const badge = badgeMap[to] ?? 0;
+
           return (
             <Link
               key={label}
               to={to}
-              onClick={() => setMobileOpen(false)}
+              onClick={(e) => {
+                if (label === 'Add Product') {
+                  e.preventDefault();
+                  window.dispatchEvent(new CustomEvent('open-add-product'));
+                }
+                setMobileOpen(false);
+              }}
               title={collapsed ? label : undefined}
               className={`
                 relative flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150
@@ -218,7 +223,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
       {/* Logout */}
       <div className="mt-auto px-3 py-4 border-t border-gray-100 space-y-2 sticky bottom-0 bg-white z-10">
         <button
-          onClick={handleLogout}
+          onClick={handleLogoutClick}
           title={collapsed ? 'Logout' : undefined}
           className={`
             flex items-center gap-3 w-full px-3 py-2.5 rounded-xl font-semibold text-sm
@@ -287,9 +292,15 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, setUserType, collapsed, set
         >
           {collapsed
             ? <ChevronRight className="w-3.5 h-3.5" />
-            : <ChevronLeft  className="w-3.5 h-3.5" />}
+            : <ChevronLeft className="w-3.5 h-3.5" />}
         </button>
       </aside>
+
+      <LogoutConfirmationModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={confirmLogout}
+      />
     </>
   );
 };

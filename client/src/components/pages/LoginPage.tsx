@@ -3,9 +3,23 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../../api/apiConfig';
 import type { LoginFormData, LoginPageProps } from '../../types';
+import { useToast } from '../ui/Toast';
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userType?: string }> = ({ onLogin, isLoggedIn, userType }) => {
   const navigate = useNavigate();
+  const toast = useToast();
+
+  React.useEffect(() => {
+    if (isLoggedIn && userType) {
+      const dashMap: any = {
+        'farmer': '/farmer-dashboard',
+        'admin': '/admin-dashboard',
+        'brgy_official': '/brgy-dashboard',
+        'buyer': '/marketplace'
+      };
+      navigate(dashMap[userType.toLowerCase()] || '/');
+    }
+  }, [isLoggedIn, userType, navigate]);
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
@@ -41,18 +55,41 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        setErrors({ email: data.message || 'Login failed' } as any);
+        const isNotRegistered = data.message && (data.message === 'You are not registered' || data.message.toLowerCase().includes('user not found'));
+        const message = isNotRegistered ? 'You are not registered' : (data.message || 'Login failed');
+        toast.error(message);
+        if (!isNotRegistered) setErrors({ email: message } as any);
+        else setErrors({});
         return;
       }
 
       // Success
       const role = data.result.role_name.toLowerCase();
-      onLogin(role);
+      const firstName = data.result.first_name || '';
+      onLogin(role, data.result, data.token);
+      toast.success(`Welcome back ${role}, ${firstName}!`);
 
-      {role === 'admin' ? navigate('/admin-dashboard') : role === 'farmer' ? navigate('/farmer-dashboard') : navigate('/marketplace')}
+      // RBAC Redirection
+      switch (role) {
+        case 'admin':
+          navigate('/admin/dashboard');
+          break;
+        case 'farmer':
+          navigate('/farmer/dashboard');
+          break;
+        case 'brgy_official':
+          navigate('/brgy/dashboard');
+          break;
+        case 'buyer':
+          navigate('/buyer/dashboard');
+          break;
+        default:
+          navigate('/buyer/marketplace');
+      }
 
     } catch (err) {
-      setErrors({ email: 'Something went wrong. Please try again.' } as any);
+      toast.error('Service temporarily unavailable. Please check your connection and try again.');
+      setErrors({ email: 'Service temporarily unavailable. Please try again later.' } as any);
     }
   };
 
@@ -116,9 +153,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     placeholder="your.email@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
-                    }`}
+                    className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
+                      }`}
                   />
                 </div>
                 {errors.email && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.email}</p>}
@@ -133,9 +169,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${
-                      errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
-                    }`}
+                    className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
+                      }`}
                   />
                   <button
                     type="button"
@@ -190,14 +225,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => { onLogin('brgy_official'); navigate('/brgy-dashboard'); }}
+                  onClick={() => { onLogin('brgy_official', { id: 998, first_name: 'Brgy', last_name: 'Official' }); navigate('/brgy-dashboard'); }}
                   className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all border border-emerald-100"
                 >
                   Brgy Official
                 </button>
                 <button
                   type="button"
-                  onClick={() => { onLogin('admin'); navigate('/admin-dashboard'); }}
+                  onClick={() => { onLogin('admin', { id: 999, first_name: 'System', last_name: 'Admin' }); navigate('/admin-dashboard'); }}
                   className="px-4 py-2 bg-purple-50 text-purple-700 rounded-xl text-xs font-bold hover:bg-purple-100 transition-all border border-purple-100"
                 >
                   Admin

@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { NavbarProps } from '../../types';
 import { useState, useRef, useEffect } from 'react';
 import { buyerNotifications, farmerNotifications, sampleConversations } from '../../data';
+import LogoutConfirmationModal from '../ui/LogoutConfirmationModal';
 
 const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLogout }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const msgRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -55,15 +57,16 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
-            <Link to="/marketplace" className="text-gray-700 hover:text-green-600 font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]">Marketplace</Link>
-            <Link to="/map" className="text-gray-700 hover:text-[#5ba409] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]">Maps</Link>
+            <Link to="/buyer/marketplace" className="text-gray-700 hover:text-green-600 font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]">Marketplace</Link>
+            <Link to="/buyer/map" className="text-gray-700 hover:text-[#5ba409] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]">Maps</Link>
             <Link to="/about" className="text-gray-700 hover:text-[#5ba409] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]">About</Link>
 
             <div className="flex items-center space-x-3">
-              <Link to="/cart" className="relative p-2 hover:bg-[#F9FBE7] rounded-full transition-colors block">
-                <ShoppingCart className="w-6 h-6 text-[#5ba409]" />
-                <span className="absolute -top-1 -right-1 bg-[#FFC107] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">2</span>
-              </Link>
+              {(userType.toLowerCase() === 'buyer' || !isLoggedIn) && (
+                <Link to="/buyer/cart" className="relative p-2 hover:bg-[#F9FBE7] rounded-full transition-colors block">
+                  <ShoppingCart className="w-6 h-6 text-[#5ba409]" />
+                </Link>
+              )}
 
               {isLoggedIn && (
                 <>
@@ -230,7 +233,7 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
                     </div>
                     <span className="font-bold capitalize">{userType}</span>
                   </Link>
-                  <button onClick={() => { onLogout(); navigate('/'); }} className="flex items-center space-x-1 text-red-500 hover:text-red-600 font-bold transition-colors">
+                  <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center space-x-1 text-red-500 hover:text-red-600 font-bold transition-colors">
                     <LogOut className="w-5 h-5" />
                     <span>Logout</span>
                   </button>
@@ -273,13 +276,23 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
                 <button onClick={() => { navigate('/register'); setMobileMenuOpen(false); }} className="w-full border-2 border-[#4CAF50] text-[#4CAF50] hover:bg-[#4CAF50] hover:text-white px-4 py-3 rounded-lg font-semibold">Register</button>
               </>
             ) : (
-              <button onClick={() => { onLogout(); setMobileMenuOpen(false); navigate('/'); }} className="w-full bg-red-50 text-red-500 border-2 border-red-500 py-3 rounded-lg font-bold flex items-center justify-center space-x-2">
+              <button onClick={() => { setIsLogoutModalOpen(true); setMobileMenuOpen(false); }} className="w-full bg-red-50 text-red-500 border-2 border-red-500 py-3 rounded-lg font-bold flex items-center justify-center space-x-2">
                 <LogOut className="w-5 h-5" /><span>Logout</span>
               </button>
             )}
           </div>
         )}
       </div>
+
+      <LogoutConfirmationModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={() => {
+          onLogout();
+          setIsLogoutModalOpen(false);
+          navigate('/');
+        }}
+      />
     </nav>
   );
 };
