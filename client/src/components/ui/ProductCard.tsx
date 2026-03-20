@@ -25,7 +25,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
   return (
     <div
       onClick={handleClick}
-      className="bg-white rounded-[2.5rem] shadow-2xl shadow-gray-200/50 hover:shadow-green-900/10 transition-all duration-500 overflow-hidden group border border-gray-100 hover:border-green-100 transform hover:-translate-y-2 relative cursor-pointer"
+      className="bg-white rounded-[2.5rem] shadow-2xl shadow-gray-200/50 hover:shadow-green-900/10 transition-all duration-500 overflow-hidden group border border-gray-100 hover:border-green-100 transform hover:-translate-y-2 relative cursor-pointer flex flex-col h-full"
     >
       {/* 🌿 Decorative Background Elements */}
       <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-32 h-32 bg-[#5ba409]/5 rounded-full blur-2xl pointer-events-none group-hover:bg-[#5ba409]/10 transition-colors" />
@@ -92,14 +92,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
       </div>
 
       {/* 📝 Content */}
-      <div className="p-8">
+      <div className="p-8 flex flex-col flex-1">
         <div className="flex justify-between items-start mb-4">
           <div>
             <span className="flex items-center gap-2 text-[10px] font-black text-green-600 bg-green-50/50 px-2.5 py-1 rounded-full uppercase tracking-widest mb-2 block w-fit border border-green-100/50 italic backdrop-blur-sm">
               <Leaf className="w-3 h-3" />
               {product.category}
             </span>
-            <h3 className="text-2xl font-black text-gray-900 tracking-tight group-hover:text-[#5ba409] transition-colors">{product.name}</h3>
+            <h3 className="text-2xl font-black text-gray-900 tracking-tight group-hover:text-[#5ba409] transition-colors line-clamp-2">{product.name}</h3>
           </div>
         </div>
 
@@ -109,7 +109,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
           </div>
           <div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Produced by</p>
-            <p className="text-sm font-bold text-gray-800 tracking-tight">{product.seller}</p>
+            <p className="text-sm font-bold text-gray-800 tracking-tight line-clamp-1">{product.seller}</p>
           </div>
         </div>
 
@@ -130,7 +130,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // Handle add to cart logic here later
+              const currentUserId = localStorage.getItem('agrilink_id');
+              if (!currentUserId) {
+                navigate('/login');
+              } else {
+                handleClick();
+              }
             }}
             className="relative w-14 h-14 bg-gradient-to-br from-[#5ba409] to-[#3d6e06] hover:from-[#1B5E20] hover:to-[#0a2e10] text-white rounded-2xl shadow-[0_10px_20px_-5px_rgba(91,164,9,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(27,94,32,0.5)] flex items-center justify-center transition-all duration-300 active:scale-90 group/btn overflow-hidden"
           >

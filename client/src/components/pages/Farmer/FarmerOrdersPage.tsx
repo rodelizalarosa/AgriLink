@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Clock, CheckCircle, XCircle, MapPin, Phone, Mail, Package, RefreshCcw, AlertTriangle, Zap, ChevronRight, ArrowRight } from 'lucide-react';
+import { ShoppingCart, MapPin, Phone, Mail, Package, RefreshCcw, AlertTriangle, Zap, ArrowRight, Search, Filter, Truck, AlertCircle, Eye, Calendar, CheckCircle, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../../../api/apiConfig';
+import { useToast } from '../../ui/Toast';
 
 const FarmerOrdersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -9,6 +10,8 @@ const FarmerOrdersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<'All' | 'Pending' | 'Confirmed' | 'Completed'>('All');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const toast = useToast();
 
   const userId = localStorage.getItem('agrilink_id');
 

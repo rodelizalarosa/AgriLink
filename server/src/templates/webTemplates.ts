@@ -105,7 +105,8 @@ export const getVerificationSuccessTemplate = (token: string, role: string, firs
             else if ('${role}' === 'brgy_official') target = '/brgy/dashboard';
             else if ('${role}' === 'buyer') target = '/buyer/dashboard';
             
-            window.location.href = 'http://localhost:5173' + target + '?welcome=true';
+            const frontendUrl = ${'`${process.env.FRONTEND_URL || \'http://localhost:5173\'}`'};
+            window.location.href = frontendUrl + target + '?welcome=true';
         });
     </script>
 </body>
@@ -131,7 +132,7 @@ export const getVerificationExpiredTemplate = () => `
         <h1 style="font-size: 40px; margin-bottom: 8px;">⏳</h1>
         <h1>Link Expired</h1>
         <p>For security reasons, verification links expire after 10 minutes. Please return to the registration page to request a new one.</p>
-        <a href="http://localhost:5173/register" class="btn">Return to Registration</a>
+        <a href="${'`${process.env.FRONTEND_URL || \'http://localhost:5173\'}`'}/register" class="btn">Return to Registration</a>
     </div>
 </body>
 </html>

@@ -4,6 +4,7 @@ import { users } from '../../../data';
 import type { UserData } from '../../../types';
 import Modal from '../../ui/Modal';
 import DashboardCard from '../../ui/DashboardCard';
+import { useToast } from '../../ui/Toast'; // Added this import
 
 interface AdminUsersPageProps {
   viewerRole?: string;
@@ -11,6 +12,7 @@ interface AdminUsersPageProps {
 
 const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ viewerRole }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const toast = useToast(); // Added this line to initialize toast
   const isBrgy = viewerRole?.toLowerCase() === 'brgy_official';
   
   // Filter users based on viewer role
@@ -220,7 +222,7 @@ const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ viewerRole }) => {
           onClose={() => setIsModalOpen(false)} 
           title="Add New Participant"
         >
-          <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); setIsModalOpen(false); alert('User created successfully! 👤'); }}>
+          <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); setIsModalOpen(false); toast.success('User created successfully! 👤'); }}>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>

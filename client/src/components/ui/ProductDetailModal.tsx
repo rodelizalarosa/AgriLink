@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     X, MapPin, Star, ShieldCheck, Zap,
     ShoppingCart, MessageSquare, Truck, Leaf,
@@ -14,6 +15,7 @@ interface ProductDetailModalProps {
 }
 
 const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ isOpen, onClose, product }) => {
+    const navigate = useNavigate();
     if (!product) return null;
 
     // Normalize data between different table/card formats
@@ -81,11 +83,6 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ isOpen, onClose
 
                             {/* Floating Status Badges */}
                             <div className="absolute top-6 left-6 flex flex-col gap-2">
-                                {isLowStock && (
-                                    <div className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 animate-pulse">
-                                        <Zap className="w-3 h-3 fill-current" /> Critical Stock
-                                    </div>
-                                )}
                                 <div className="bg-white/90 backdrop-blur-md text-[#5ba409] px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl border border-green-50 flex items-center gap-2">
                                     <ShieldCheck className="w-3 h-3" /> QA Verified
                                 </div>
@@ -108,7 +105,6 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ isOpen, onClose
                                 <span className="px-3 py-1 bg-green-50 text-[#5ba409] text-[10px] font-black rounded-lg uppercase tracking-widest border border-green-100 italic">
                                     {category}
                                 </span>
-                                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest italic">Inventory ID: {id?.toString().padStart(6, '0')}</span>
                             </div>
                             <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase italic leading-none">
                                 {name}
@@ -163,7 +159,35 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ isOpen, onClose
                 </div>
 
                 {/* 🎯 Centered Elite Actions */}
-                {!isOwner && (
+                {!isOwner && !currentUserId && (
+                    <div className="flex flex-col items-center justify-center gap-4 pt-8 border-t border-gray-50 max-w-2xl mx-auto text-center">
+                        <div className="bg-green-50 rounded-3xl p-8 border border-green-100 w-full shadow-inner">
+                            <h3 className="text-2xl font-black text-gray-900 mb-2">You are not yet registered! 🌱</h3>
+                            <p className="text-gray-600 font-medium mb-6 text-lg">Join AgriLink today to purchase fresh products directly from <span className="font-bold text-green-700">{seller}</span> and support local farmers.</p>
+                            <div className="flex gap-4 justify-center">
+                                <button 
+                                    onClick={() => {
+                                        onClose();
+                                        navigate('/register');
+                                    }}
+                                    className="px-10 py-4 bg-[#5ba409] hover:bg-[#4d8f08] text-white rounded-2xl font-black transition-all shadow-lg hover:-translate-y-1 active:scale-95"
+                                >
+                                    Create Free Account
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        onClose();
+                                        navigate('/login');
+                                    }}
+                                    className="px-10 py-4 bg-white hover:bg-gray-50 text-[#5ba409] border-2 border-[#5ba409] rounded-2xl font-black transition-all shadow-md hover:-translate-y-1 active:scale-95"
+                                >
+                                    Log In
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {!isOwner && currentUserId && (
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8 border-t border-gray-50 max-w-2xl mx-auto">
                         <button className="w-full sm:w-auto px-12 py-5 bg-gradient-to-br from-[#5ba409] to-[#4d8f08] text-white rounded-[2rem] font-black uppercase tracking-[0.3em] italic text-[12px] shadow-2xl shadow-green-900/20 hover:shadow-green-500/40 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-4 group">
                             <ShieldCheck className="w-5 h-5 group-hover:scale-110 transition-transform" />

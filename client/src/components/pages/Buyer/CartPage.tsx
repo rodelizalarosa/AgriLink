@@ -14,9 +14,12 @@ import {
   Info,
   ChevronRight,
   Clock,
-  Star
+  Star,
+  MapPin,
+  Search
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../../ui/Toast';
 
 interface CartItem {
   id: string;
@@ -29,8 +32,12 @@ interface CartItem {
   stock: number;
 }
 
+// Mock user session 
+const userType = 'buyer';
+
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [promoCode, setPromoCode] = useState('');
   const [isSummaryVisible, setIsSummaryVisible] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
@@ -98,6 +105,8 @@ const CartPage: React.FC = () => {
   const total = subtotal + shippingFee - discount;
   const freeShippingThreshold = 1000;
   const progressToFreeShipping = Math.min(100, (subtotal / freeShippingThreshold) * 100);
+  const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] relative overflow-hidden">
@@ -109,27 +118,25 @@ const CartPage: React.FC = () => {
         
         {/* 🗺️ Refined Step Indicator */}
         <div className="flex items-center justify-center mb-10 px-4">
-          <div className="flex items-center w-full max-w-xl">
-            <div className="flex flex-col items-center group cursor-pointer" onClick={() => navigate('/marketplace')}>
-              <div className="w-10 h-10 rounded-xl bg-white border border-[#5ba409] flex items-center justify-center text-[#5ba409] shadow-lg shadow-green-500/5 group-hover:scale-105 transition-transform">
-                <Store className="w-4 h-4" />
-              </div>
-              <span className="mt-2 text-[9px] font-black uppercase tracking-widest text-[#5ba409]">Shop</span>
+          <div className="flex flex-col items-center group cursor-pointer" onClick={() => navigate('/marketplace')}>
+            <div className="w-10 h-10 rounded-xl bg-white border border-[#5ba409] flex items-center justify-center text-[#5ba409] shadow-lg shadow-green-500/5 group-hover:scale-105 transition-transform">
+              <Store className="w-4 h-4" />
             </div>
-            <div className="flex-1 h-[1px] mx-3 bg-[#5ba409]/30"></div>
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-2xl bg-[#5ba409] flex items-center justify-center text-white shadow-xl shadow-green-500/20 border-2 border-white">
-                <ShoppingBag className="w-5 h-5" />
-              </div>
-              <span className="mt-2 text-[9px] font-black uppercase tracking-widest text-gray-900 border-b-2 border-[#5ba409]">Basket</span>
+            <span className="mt-2 text-[9px] font-black uppercase tracking-widest text-[#5ba409]">Shop</span>
+          </div>
+          <div className="flex-1 h-[1px] mx-3 bg-[#5ba409]/30"></div>
+          <div className="flex flex-col items-center">
+            <div className="w-12 h-12 rounded-2xl bg-[#5ba409] flex items-center justify-center text-white shadow-xl shadow-green-500/20 border-2 border-white">
+              <ShoppingBag className="w-5 h-5" />
             </div>
-            <div className="flex-1 h-[1px] mx-3 bg-gray-100"></div>
-            <div className="flex flex-col items-center opacity-30">
-              <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-gray-400">
-                <CreditCard className="w-4 h-4" />
-              </div>
-              <span className="mt-2 text-[9px] font-black uppercase tracking-widest text-gray-400">Checkout</span>
+            <span className="mt-2 text-[9px] font-black uppercase tracking-widest text-gray-900 border-b-2 border-[#5ba409]">Basket</span>
+          </div>
+          <div className="flex-1 h-[1px] mx-3 bg-gray-100"></div>
+          <div className="flex flex-col items-center opacity-30">
+            <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-gray-400">
+              <CreditCard className="w-4 h-4" />
             </div>
+            <span className="mt-2 text-[9px] font-black uppercase tracking-widest text-gray-400">Checkout</span>
           </div>
         </div>
 
@@ -249,11 +256,9 @@ const CartPage: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {/* 📍 Info Feature Card */}
           </div>
 
-          {/* 🧾 Compact Summary Sidebar */}
+          {/* Compact Summary Sidebar */}
           <aside ref={summaryRef} className="w-full lg:w-[380px] lg:sticky lg:top-6">
             <div className="bg-white rounded-3xl p-8 shadow-xl shadow-gray-200/40 border border-gray-50 overflow-hidden relative">
               

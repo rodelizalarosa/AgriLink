@@ -27,7 +27,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300"
@@ -36,15 +36,26 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
 
       {/* Modal Content */}
       <div className={`relative bg-white w-full ${maxWidth} rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-300 border border-green-50`}>
-        <div className="flex items-center justify-between p-8 border-b border-gray-100">
-          <h2 className="text-2xl font-black text-gray-900 tracking-tight">{title}</h2>
+        {title && (
+          <div className="flex items-center justify-between p-8 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight flex-1 text-center">{title}</h2>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-gray-900 absolute top-6 right-8 z-10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        )}
+
+        {!title && (
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-gray-900"
+            className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-gray-900 absolute top-6 right-8 z-10"
           >
             <X className="w-6 h-6" />
           </button>
-        </div>
+        )}
 
         <div className="p-8 max-h-[80vh] overflow-y-auto custom-scrollbar">
           {children}

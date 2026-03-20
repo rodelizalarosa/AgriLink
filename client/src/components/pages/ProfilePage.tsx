@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
+import { useToast } from '../ui/Toast';
 import Modal from '../ui/Modal';
 import { 
   User, 
@@ -29,6 +30,7 @@ interface ProfilePageProps {
 const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const { id } = useParams<{ id: string }>();
   const isReadOnly = !!id; // if an ID is passed in the URL, viewing another profile
   
@@ -44,12 +46,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
   const [activeTab, setActiveTab] = useState<'personal' | 'security' | 'role'>('personal');
   const [isEditing, setIsEditing] = useState(false);
   
-  // Mock user data based on role
+  // Load user data from session
   const [profile, setProfile] = useState<UserProfile>({
-    id: '1',
-    firstName: 'James Robert',
-    lastName: 'Cabizares',
-    email: userType === 'admin' ? 'admin@agrilink.ph' : 'juan.delacruz@email.com',
+    id: localStorage.getItem('agrilink_id') || '1',
+    firstName: localStorage.getItem('agrilink_firstName') || 'Guest',
+    lastName: localStorage.getItem('agrilink_lastName') || 'User',
+    email: localStorage.getItem('agrilink_email') || (userType === 'admin' ? 'admin@agrilink.ph' : 'juan.delacruz@email.com'),
     phone: '+63 912 345 6789',
     address: '123 Harvest Lane',
     city: 'Malaybalay',
@@ -57,7 +59,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
     zipCode: '8700',
     userType: userType as 'farmer' | 'buyer' | 'admin' | 'brgy_official' | 'lgu_official',
     bio: 'Dedicated to connecting farmers and modernizing agricultural management in our local community.',
-    profileImage: '/mongg.jpg',
+    profileImage: '',
     farmName: (userType === 'farmer' || isReadOnly) ? 'Green Valley Organic Farm' : undefined,
     farmSize: (userType === 'farmer' || isReadOnly) ? '5 Hectares' : undefined,
     deliveryRange: (userType === 'farmer' || isReadOnly) ? '25km' : undefined,
@@ -74,7 +76,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
   const handleSave = () => {
     setIsEditing(false);
     // In a real app, this would be an API call
-    alert('Profile updated successfully! 🌿');
+    toast.success('Profile updated successfully! 🌿');
   };
 
   const renderTabContent = () => {
@@ -497,12 +499,18 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
             <div className="relative flex flex-col md:flex-row items-end -mt-16 mb-8 gap-6">
               {/* Profile Image */}
               <div className="relative group">
-                <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl border-8 border-white overflow-hidden shadow-2xl bg-gray-100 ring-4 ring-green-50">
-                  <img 
-                    src={profile.profileImage} 
-                    alt={`${profile.firstName} ${profile.lastName}`}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
+                <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl border-8 border-white overflow-hidden shadow-2xl bg-gray-100 ring-4 ring-green-50 flex items-center justify-center">
+                  {profile.profileImage ? (
+                    <img 
+                      src={profile.profileImage} 
+                      alt={`${profile.firstName} ${profile.lastName}`}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-[#5ba409] to-[#74c419] flex items-center justify-center text-white text-5xl font-black uppercase shadow-inner">
+                      {profile.firstName?.charAt(0) || ''}{profile.lastName?.charAt(0) || ''}
+                    </div>
+                  )}
                 </div>
                 {isEditing && (
                   <button className="absolute bottom-2 right-2 p-3 bg-[#5ba409] text-white rounded-2xl shadow-lg hover:scale-110 transition-all">

@@ -114,7 +114,6 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        toast.error(data.message || 'Registration failed');
         setErrors({ email: data.message || 'Registration failed' } as any);
         return;
       }
@@ -127,7 +126,6 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
       }, 2000);
 
     } catch (err) {
-      toast.error('Service temporarily unavailable. Please check your connection and try again.');
       setErrors({ email: 'Service temporarily unavailable. Please try again later.' } as any);
     }
 

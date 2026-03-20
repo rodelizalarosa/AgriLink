@@ -10,7 +10,7 @@ const app = express();
 app.use((req: Request, res: Response, next: NextFunction) => {
     const origin = req.headers.origin;
 
-    if (origin === 'http://localhost:5173') {
+    if (origin) {
         res.setHeader('Access-Control-Allow-Origin', origin);
     }
 

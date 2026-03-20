@@ -33,7 +33,12 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
     e.preventDefault();
 
     const newErrors: Partial<LoginFormData> = {};
-    if (!formData.email) newErrors.email = 'Email is required' as any;
+    if (!formData.email) {
+        newErrors.email = 'Email is required' as any;
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        newErrors.email = 'Please enter a valid email address' as any;
+    }
+    
     if (!formData.password) newErrors.password = 'Password is required' as any;
 
     if (Object.keys(newErrors).length > 0) {
@@ -55,11 +60,15 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
       const data = await response.json();
 
       if (!response.ok) {
+        const isPasswordError = data.message && data.message.toLowerCase().includes('password');
         const isNotRegistered = data.message && (data.message === 'You are not registered' || data.message.toLowerCase().includes('user not found'));
         const message = isNotRegistered ? 'You are not registered' : (data.message || 'Login failed');
-        toast.error(message);
-        if (!isNotRegistered) setErrors({ email: message } as any);
-        else setErrors({});
+        
+        if (isPasswordError) {
+          setErrors({ password: message } as any);
+        } else {
+          setErrors({ email: message } as any);
+        }
         return;
       }
 
@@ -84,11 +93,10 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
           navigate('/buyer/dashboard');
           break;
         default:
-          navigate('/buyer/marketplace');
+          navigate('/marketplace');
       }
 
     } catch (err) {
-      toast.error('Service temporarily unavailable. Please check your connection and try again.');
       setErrors({ email: 'Service temporarily unavailable. Please try again later.' } as any);
     }
   };
@@ -143,7 +151,7 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
               <p className="text-gray-600">Sign in to continue to your account</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
                 <div className="relative">
@@ -152,7 +160,10 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
                     type="email"
                     placeholder="your.email@example.com"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value });
+                        if (errors.email) setErrors({ ...errors, email: undefined });
+                    }}
                     className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.email ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
                       }`}
                   />
@@ -168,7 +179,10 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) => {
+                        setFormData({ ...formData, password: e.target.value });
+                        if (errors.password) setErrors({ ...errors, password: undefined });
+                    }}
                     className={`w-full pl-12 pr-12 py-3 border-2 rounded-xl focus:outline-none font-semibold transition-colors ${errors.password ? 'border-red-500' : 'border-gray-200 focus:border-[#5ba409]'
                       }`}
                   />
@@ -218,26 +232,6 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
                   Sign Up
                 </button>
               </p>
-            </div>
-
-            <div className="mt-10 pt-8 border-t border-gray-100">
-              <p className="text-center text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Quick Login (Testing Only)</p>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => { onLogin('brgy_official', { id: 998, first_name: 'Brgy', last_name: 'Official' }); navigate('/brgy-dashboard'); }}
-                  className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all border border-emerald-100"
-                >
-                  Brgy Official
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { onLogin('admin', { id: 999, first_name: 'System', last_name: 'Admin' }); navigate('/admin-dashboard'); }}
-                  className="px-4 py-2 bg-purple-50 text-purple-700 rounded-xl text-xs font-bold hover:bg-purple-100 transition-all border border-purple-100"
-                >
-                  Admin
-                </button>
-              </div>
             </div>
           </div>
         </div>

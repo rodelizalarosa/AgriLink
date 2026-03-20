@@ -20,10 +20,10 @@ import {
   CheckCircle,
   Zap,
   Medal,
-  Crown,
-  Sparkles
+  Crown
 } from 'lucide-react';
 import Modal from '../../ui/Modal';
+import { useToast } from '../../ui/Toast';
 import { sampleProducts, users } from '../../../data';
 
 type PageView = 'listings' | 'badges';
@@ -148,6 +148,7 @@ const BrgyListingsPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedBadgeId, setSelectedBadgeId] = useState<string>('');
+  const toast = useToast();
 
   React.useEffect(() => {
     if (awardTarget) {
@@ -485,7 +486,7 @@ const BrgyListingsPage: React.FC = () => {
 
       {/* ── Submit Crop Modal ────────────────────────────────────────── */}
       <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Submit Local Harvest">
-        <form className="space-y-6" onSubmit={e => { e.preventDefault(); setIsAddModalOpen(false); alert('Crop submitted for LGU approval! 🌾'); }}>
+        <form className="space-y-6" onSubmit={e => { e.preventDefault(); setIsAddModalOpen(false); toast.success('Crop submitted for LGU approval! 🌾'); }}>
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Crop Name</label>

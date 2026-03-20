@@ -3,6 +3,7 @@ import './App.css';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 
 // Components
+import LogoutPage from './components/pages/LogoutPage';
 import Navbar from './components/common/Navbar';
 import Sidebar from './components/common/Sidebar';
 import RouteTransition from './components/ui/RouteTransition';
@@ -28,6 +29,7 @@ import ProfilePage from './components/pages/ProfilePage';
 import LogsPage from './components/pages/LogsPage';
 import MessagesPage from './components/pages/MessagesPage';
 import NotificationsPage from './components/pages/NotificationsPage';
+import { useToast, ToastContainer } from './components/ui/Toast';
 import ProductDetailPage from './components/pages/Buyer/ProductDetailPage';
 import CartPage from './components/pages/Buyer/CartPage';
 import CheckoutPage from './components/pages/Buyer/CheckoutPage';
@@ -37,7 +39,7 @@ import { ArrowUp } from 'lucide-react';
 import BrgyDashboard from './components/pages/Brgy/BrgyDashboard';
 import BrgyListingsPage from './components/pages/Brgy/BrgyListingsPage';
 import BrgyAwardBadgePage from './components/pages/Brgy/BrgyAwardBadgePage';
-import { ToastContainer } from './components/ui/Toast';
+
 
 // Routes where the sidebar should be shown (farmer/admin/brgy/lgu only)
 const SIDEBAR_ROUTES = [
@@ -55,7 +57,7 @@ const SIDEBAR_ROUTES = [
   '/admin/users',
   '/admin/listings',
   '/admin/orders',
-  '/buyer/marketplace',
+  '/marketplace',
   '/profile',
   '/logs',
   '/buyer/cart',
@@ -97,7 +99,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const routeTitles: { [key: string]: string } = {
       '/': 'AgriLink | Fresh Farm Produce',
-      '/buyer/marketplace': 'Marketplace | AgriLink',
+      '/marketplace': 'Marketplace | AgriLink',
       '/farmer/dashboard': 'Farmer Dashboard | AgriLink',
       '/farmer/listings': 'My Listings | AgriLink',
       '/farmer/orders': 'Farmer Orders | AgriLink',
@@ -159,13 +161,17 @@ const AppContent: React.FC = () => {
       localStorage.setItem('agrilink_firstName', userData.first_name || '');
       localStorage.setItem('agrilink_lastName', userData.last_name || '');
       localStorage.setItem('agrilink_id', userData.id || '');
+      localStorage.setItem('agrilink_email', userData.email || '');
     }
 
     localStorage.setItem('agrilink_role', sanitizedRole);
     localStorage.setItem('agrilink_isLoggedIn', 'true');
   };
 
+  const toast = useToast();
+
   const handleLogout = () => {
+    toast.success('Logged out successfully! 👋');
     setIsLoggedIn(false);
     setFirstName('');
     setLastName('');
@@ -187,7 +193,7 @@ const AppContent: React.FC = () => {
         'farmer': '/farmer/dashboard',
         'admin': '/admin/dashboard',
         'brgy_official': '/brgy/dashboard',
-        'buyer': '/buyer/marketplace'
+        'buyer': '/marketplace'
       };
       navigate(dashMap[userType.toLowerCase()] || '/');
       return null;
@@ -202,7 +208,7 @@ const AppContent: React.FC = () => {
         'farmer': '/farmer/dashboard',
         'admin': '/admin/dashboard',
         'brgy_official': '/brgy/dashboard',
-        'buyer': '/buyer/marketplace'
+        'buyer': '/marketplace'
       };
       navigate(dashMap[userType.toLowerCase()] || '/');
       return null;
@@ -246,6 +252,7 @@ const AppContent: React.FC = () => {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/login" element={<GuestGuard><LoginPage onLogin={handleLogin} isLoggedIn={isLoggedIn} userType={userType} /></GuestGuard>} />
               <Route path="/register" element={<GuestGuard><RegisterPage onLogin={handleLogin} /></GuestGuard>} />
+              <Route path="/logout" element={isLoggedIn ? <LogoutPage onLogout={handleLogout} /> : <LoginPage onLogin={handleLogin} isLoggedIn={isLoggedIn} userType={userType} />} />
 
               {/* Protected-for-all Routes */}
               <Route path="/profile" element={isLoggedIn ? <ProfilePage userType={userType} /> : <LoginPage onLogin={handleLogin} isLoggedIn={isLoggedIn} userType={userType} />} />
@@ -263,8 +270,8 @@ const AppContent: React.FC = () => {
 
               {/* Buyer Routes */}
               <Route path="/buyer/dashboard" element={<RoleGuard allowedRoles={['buyer']}><BuyerDashboard /></RoleGuard>} />
-              <Route path="/buyer/marketplace" element={<MarketplacePage />} />
-              <Route path="/buyer/product/:id" element={<ProductDetailPage />} />
+              <Route path="/marketplace" element={<MarketplacePage />} />
+              <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/buyer/cart" element={<RoleGuard allowedRoles={['buyer']}><CartPage /></RoleGuard>} />
               <Route path="/buyer/checkout/:id" element={<RoleGuard allowedRoles={['buyer']}><CheckoutPage /></RoleGuard>} />
               <Route path="/buyer/map" element={<MapPage />} />

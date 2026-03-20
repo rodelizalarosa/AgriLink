@@ -339,7 +339,7 @@ const FarmerListingsPage: React.FC = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/buyer/marketplace?search=${product.p_name}`);
+                                navigate(`/marketplace?search=${product.p_name}`);
                               }}
                               className="w-12 h-12 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-blue-500 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-900/10 transition-all active:scale-90 flex items-center justify-center group/btn"
                               title="View in Marketplace"

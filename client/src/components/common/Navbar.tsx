@@ -3,13 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { NavbarProps } from '../../types';
 import { useState, useRef, useEffect } from 'react';
 import { buyerNotifications, farmerNotifications, sampleConversations } from '../../data';
-import LogoutConfirmationModal from '../ui/LogoutConfirmationModal';
 
 const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLogout }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const msgRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -57,8 +55,8 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
-            <Link to="/buyer/marketplace" className="text-gray-700 hover:text-green-600 font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]">Marketplace</Link>
-            <Link to="/buyer/map" className="text-gray-700 hover:text-[#5ba409] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]">Maps</Link>
+            <Link to="/marketplace" className="text-gray-700 hover:text-green-600 font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]">Marketplace</Link>
+            <Link to="/buyer/map" className="text-gray-700 hover:text-[#5ba409] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]">Map</Link>
             <Link to="/about" className="text-gray-700 hover:text-[#5ba409] font-semibold transition-colors px-3 py-2 rounded-lg hover:bg-[#F9FBE7]">About</Link>
 
             <div className="flex items-center space-x-3">
@@ -233,7 +231,7 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
                     </div>
                     <span className="font-bold capitalize">{userType}</span>
                   </Link>
-                  <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center space-x-1 text-red-500 hover:text-red-600 font-bold transition-colors">
+                  <button onClick={() => navigate('/logout')} className="flex items-center space-x-1 text-red-500 hover:text-red-600 font-bold transition-colors">
                     <LogOut className="w-5 h-5" />
                     <span>Logout</span>
                   </button>
@@ -252,7 +250,7 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
         {mobileMenuOpen && (
           <div className="md:hidden pb-4 space-y-2 animate-fadeIn">
             <Link to="/marketplace" onClick={() => setMobileMenuOpen(false)} className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold block">Marketplace</Link>
-            <Link to="/map" onClick={() => setMobileMenuOpen(false)} className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold block">Maps</Link>
+            <Link to="/buyer/map" onClick={() => setMobileMenuOpen(false)} className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold block">Map</Link>
             <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold block">About</Link>
 
             {isLoggedIn && (
@@ -276,7 +274,7 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
                 <button onClick={() => { navigate('/register'); setMobileMenuOpen(false); }} className="w-full border-2 border-[#4CAF50] text-[#4CAF50] hover:bg-[#4CAF50] hover:text-white px-4 py-3 rounded-lg font-semibold">Register</button>
               </>
             ) : (
-              <button onClick={() => { setIsLogoutModalOpen(true); setMobileMenuOpen(false); }} className="w-full bg-red-50 text-red-500 border-2 border-red-500 py-3 rounded-lg font-bold flex items-center justify-center space-x-2">
+              <button onClick={() => { navigate('/logout'); setMobileMenuOpen(false); }} className="w-full bg-red-50 text-red-500 border-2 border-red-500 py-3 rounded-lg font-bold flex items-center justify-center space-x-2">
                 <LogOut className="w-5 h-5" /><span>Logout</span>
               </button>
             )}
@@ -284,15 +282,6 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
         )}
       </div>
 
-      <LogoutConfirmationModal
-        isOpen={isLogoutModalOpen}
-        onClose={() => setIsLogoutModalOpen(false)}
-        onConfirm={() => {
-          onLogout();
-          setIsLogoutModalOpen(false);
-          navigate('/');
-        }}
-      />
     </nav>
   );
 };

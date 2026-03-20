@@ -42,6 +42,8 @@ const ProductDetailPage: React.FC = () => {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [cartSuccess, setCartSuccess] = useState(false);
 
+  const currentUserId = localStorage.getItem('agrilink_id');
+
   if (!product) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FBE7] gap-6">
@@ -257,20 +259,41 @@ const ProductDetailPage: React.FC = () => {
             </div>
 
             {/* CTA Buttons */}
-            <div className="flex gap-4">
-              <button
-                onClick={handleOrder}
-                className="flex-[2] py-6 border-2 border-green-600 bg-green-600 hover:bg-transparent text-white hover:text-green-600 rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl shadow-green-600/20 hover:shadow-none hover:-translate-y-0.5 active:scale-[0.98]"
-              >
-                {orderSuccess ? <><CheckCircle className="w-6 h-6" /> Order Placed!</> : <><CheckCircle className="w-6 h-6" /> Place Order</>}
-              </button>
-              <button
-                onClick={handleCart}
-                className="flex-1 py-6 border-2 border-green-600 bg-transparent text-green-600 hover:bg-green-600 hover:text-white rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 transition-all hover:shadow-2xl hover:shadow-green-600/20 hover:-translate-y-0.5 active:scale-[0.98]"
-              >
-                {cartSuccess ? <><CheckCircle className="w-6 h-6" /> Added!</> : <><ShoppingCart className="w-6 h-6" /> Add to Cart</>}
-              </button>
-            </div>
+            {!currentUserId ? (
+              <div className="bg-green-50 rounded-3xl p-8 border border-green-100 w-full shadow-inner text-center mt-6">
+                <h3 className="text-2xl font-black text-gray-900 mb-2">You are not yet registered! 🌱</h3>
+                <p className="text-gray-600 font-medium mb-6 text-base">Join AgriLink today to purchase fresh products directly from <span className="font-bold text-green-700">{product.seller}</span> and support local farmers.</p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button 
+                        onClick={() => navigate('/register')}
+                        className="px-8 py-4 bg-[#5ba409] hover:bg-[#4d8f08] text-white rounded-2xl font-black transition-all shadow-lg hover:-translate-y-1 active:scale-95"
+                    >
+                        Create Free Account
+                    </button>
+                    <button 
+                        onClick={() => navigate('/login')}
+                        className="px-8 py-4 bg-white hover:bg-gray-50 text-[#5ba409] border-2 border-[#5ba409] rounded-2xl font-black transition-all shadow-md hover:-translate-y-1 active:scale-95"
+                    >
+                        Log In
+                    </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-4">
+                <button
+                  onClick={handleOrder}
+                  className="flex-[2] py-6 border-2 border-green-600 bg-green-600 hover:bg-transparent text-white hover:text-green-600 rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl shadow-green-600/20 hover:shadow-none hover:-translate-y-0.5 active:scale-[0.98]"
+                >
+                  {orderSuccess ? <><CheckCircle className="w-6 h-6" /> Order Placed!</> : <><CheckCircle className="w-6 h-6" /> Place Order</>}
+                </button>
+                <button
+                  onClick={handleCart}
+                  className="flex-1 py-6 border-2 border-green-600 bg-transparent text-green-600 hover:bg-green-600 hover:text-white rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 transition-all hover:shadow-2xl hover:shadow-green-600/20 hover:-translate-y-0.5 active:scale-[0.98]"
+                >
+                  {cartSuccess ? <><CheckCircle className="w-6 h-6" /> Added!</> : <><ShoppingCart className="w-6 h-6" /> Add to Cart</>}
+                </button>
+              </div>
+            )}
 
             {/* Trust chips */}
             <div className="grid grid-cols-3 gap-3">

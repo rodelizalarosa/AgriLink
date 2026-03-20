@@ -53,29 +53,18 @@ const MapPage: React.FC = () => {
     <div className="flex flex-col md:flex-row h-auto md:h-[calc(100vh-80px)] bg-gray-50 overflow-x-hidden md:overflow-hidden">
       {/* Map Section - Top/Left */}
       <div className="w-full md:flex-1 h-[400px] md:h-full relative flex items-center justify-center overflow-hidden bg-[#f0f4f8]">
-        {/* Decorative Grid Background */}
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#5ba409 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
-        
-        {/* Map Placeholder Content */}
-        <div className="relative z-10 text-center p-6 md:p-8 max-w-lg">
-          <div className="w-16 h-16 md:w-24 md:h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6 animate-pulse">
-            <MapIcon className="w-8 h-8 md:w-12 md:h-12 text-[#5ba409]" />
-          </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3 md:mb-4">Interactive Map Coming Soon</h2>
-          <p className="text-sm md:text-base text-gray-600 mb-6 md:mb-8 leading-relaxed">
-            We're currently integrating with our logistics partners to provide you with real-time farmer locations and optimized delivery routes.
-          </p>
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
-            <div className="p-3 md:p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-white shadow-sm flex flex-col items-center">
-              <MapPin className="w-5 h-5 md:w-6 md:h-6 text-[#5ba409] mb-1.5 md:mb-2" />
-              <span className="text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider">Live Tracking</span>
-            </div>
-            <div className="p-3 md:p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-white shadow-sm flex flex-col items-center">
-              <Navigation className="w-5 h-5 md:w-6 md:h-6 text-[#5ba409] mb-1.5 md:mb-2" />
-              <span className="text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider">Route Optimization</span>
-            </div>
-          </div>
-        </div>
+        {/* Real Interactive Map */}
+        <iframe 
+          width="100%" 
+          height="100%" 
+          frameBorder="0" 
+          scrolling="no" 
+          marginHeight={0} 
+          marginWidth={0} 
+          src="https://www.openstreetmap.org/export/embed.html?bbox=120.96%2C14.57%2C121.06%2C14.67&layer=mapnik&marker=14.62%2C121.01" 
+          style={{ border: 0, width: '100%', height: '100%', position: 'absolute', inset: 0 }}
+          title="AgriLink Farmer Map"
+        />
         
         {/* Floating UI Elements on Map */}
         <div className="absolute top-4 left-4 md:top-6 md:left-6 flex space-x-2">
@@ -194,9 +183,14 @@ const MapPage: React.FC = () => {
                   <Clock className="w-4 h-4" />
                   <span>Est. Time: <b>15 mins</b></span>
                 </div>
-                <button className="bg-[#5ba409] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-[#5ba409]/20 hover:scale-105 transition-transform active:scale-95">
+                <a 
+                  href="https://www.google.com/maps/dir/?api=1&destination=14.62,121.01" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="bg-[#5ba409] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-[#5ba409]/20 hover:scale-105 transition-transform active:scale-95 text-center"
+                >
                   Start Navigation
-                </button>
+                </a>
               </div>
             </div>
           </div>

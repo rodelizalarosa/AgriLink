@@ -74,7 +74,8 @@ export const registerUser = async (data: RegisterInput) => {
       { expiresIn: '10m' }
     );
 
-    const confirmationURL = `http://localhost:5001/api/auth/verify?token=${verificationToken}`;
+    const apiUrl = process.env.API_URL || 'http://localhost:5001';
+    const confirmationURL = `${apiUrl}/api/auth/verify?token=${verificationToken}`;
 
 
     const logoUrl = process.env.LOGO_URL || 'https://osgogrbrjlnslgdinhgl.supabase.co/storage/v1/object/public/email-assets/AgriLinkGREEN.png';
