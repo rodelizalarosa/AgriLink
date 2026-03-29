@@ -164,6 +164,15 @@ CREATE TABLE `users_table` (
   `auth_id` int(11) NOT NULL,
   `first_name` varchar(100) NOT NULL,
   `last_name` varchar(100) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `city` varchar(100) DEFAULT NULL,
+  `province` varchar(100) DEFAULT NULL,
+  `zip_code` varchar(20) DEFAULT NULL,
+  `latitude` decimal(10,8) DEFAULT NULL,
+  `longitude` decimal(11,8) DEFAULT NULL,
+  `role` enum('buyer','farmer','brgy_official','lgu_official','admin') NOT NULL,
+  `onboarding_completed` tinyint(1) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -171,8 +180,8 @@ CREATE TABLE `users_table` (
 -- Dumping data for table `users_table`
 --
 
-INSERT INTO `users_table` (`id`, `auth_id`, `first_name`, `last_name`, `created_at`) VALUES
-(1, 1, 'Rasheed', 'Culpa necessitatibus', '2026-03-04 04:21:37');
+INSERT INTO `users_table` (`id`, `auth_id`, `first_name`, `last_name`, `phone`, `address`, `city`, `province`, `zip_code`, `latitude`, `longitude`, `role`, `onboarding_completed`, `created_at`) VALUES
+(1, 1, 'Rasheed', 'Culpa necessitatibus', '+63 912 345 6789', '123 Harvest Lane', 'Minglanilla', 'Cebu', '6046', 10.24440000, 123.79150000, 'farmer', 1, '2026-03-04 04:21:37');
 
 --
 -- Indexes for dumped tables

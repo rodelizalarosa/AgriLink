@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { sampleProducts } from '../../../data';
+import { API_BASE_URL } from '../../../api/apiConfig';
 import type { Product } from '../../../types';
 import { 
   ArrowLeft, 
@@ -18,7 +18,8 @@ const CheckoutPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  const product: Product | undefined = sampleProducts.find(p => p.id === Number(id));
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
   const qty = Number(searchParams.get('qty')) || 1;
 
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gcash' | 'card'>('cod');
@@ -26,39 +27,109 @@ const CheckoutPage: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState(false);
 
   // Form states
-  const [address, setAddress] = useState('123 Mango Street, Brgy. San Jose, Agritown');
+  const [address, setAddress] = useState('');
   const [contactMessage, setContactMessage] = useState('');
 
-  if (!product) {
+  React.useEffect(() => {
+    const fetchCheckoutData = async () => {
+      try {
+        // 1. Fetch Product
+        const prodRes = await fetch(`${API_BASE_URL}/products/${id}`);
+        if (prodRes.ok) {
+          const prodData = await prodRes.json();
+          const p = prodData.product;
+          setProduct({
+            id: p.p_id,
+            name: p.p_name,
+            price: parseFloat(p.p_price),
+            unit: p.p_unit,
+            seller: `${p.first_name} ${p.last_name}`,
+            location: p.city || 'Local Farm',
+            stock: parseFloat(p.p_quantity),
+            image: p.p_image || '🌱',
+            category: p.cat_name || 'Others'
+          });
+        }
+
+        // 2. Fetch User Address if available
+        const userId = localStorage.getItem('agrilink_id');
+        const token = localStorage.getItem('agrilink_token');
+        if (userId && token) {
+          const userRes = await fetch(`${API_BASE_URL}/users/${userId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            if (userData.address) {
+              setAddress(`${userData.address}, ${userData.city}, ${userData.province}`);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching checkout data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCheckoutData();
+  }, [id]);
+
+  const handleConfirmOrder = async () => {
+    if (!address) {
+      alert('Please provide a delivery address.');
+      return;
+    }
+
+    const userId = localStorage.getItem('agrilink_id');
+    const token = localStorage.getItem('agrilink_token');
+
+    if (!userId || !token) {
+      alert('You must be logged in to place an order.');
+      navigate('/login');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/purchases`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          buyer_id: userId,
+          product_id: id,
+          quantity: qty,
+          address: address, // Assuming the backend might use this eventually
+          notes: contactMessage
+        })
+      });
+
+      if (response.ok) {
+        setIsSuccess(true);
+        setTimeout(() => {
+          navigate('/buyer-dashboard');
+        }, 3000);
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to place order');
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FBE7] gap-6">
-        <h2 className="text-3xl font-black text-gray-900">Product not found for checkout</h2>
-        <button
-          onClick={() => navigate('/marketplace')}
-          className="flex items-center gap-2 px-8 py-4 bg-green-600 text-white rounded-2xl font-black"
-        >
-          <ArrowLeft className="w-5 h-5" /> Back to Marketplace
-        </button>
+      <div className="min-h-screen flex items-center justify-center bg-[#F9FBE7]">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-600"></div>
       </div>
     );
   }
-
-  const subtotal = product.price * qty;
-  const deliveryFee = 50; // Mock flat fee
-  const total = subtotal + deliveryFee;
-
-  const handleConfirmOrder = () => {
-    setIsProcessing(true);
-    // Simulate network request
-    setTimeout(() => {
-      setIsProcessing(false);
-      setIsSuccess(true);
-      // Wait a bit before redirecting
-      setTimeout(() => {
-        navigate('/buyer-dashboard');
-      }, 2500);
-    }, 1500);
-  };
 
   if (isSuccess) {
     return (
@@ -82,6 +153,29 @@ const CheckoutPage: React.FC = () => {
       </div>
     );
   }
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FBE7]">
+        <div className="bg-white p-12 rounded-[3rem] shadow-2xl text-center max-w-lg w-full mx-4 border border-gray-100">
+          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShieldCheck className="w-10 h-10 text-gray-400" />
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 mb-4">Product Not Found</h1>
+          <p className="text-gray-500 mb-8 font-medium">We couldn't retrieve the details for this item. It may have been removed or is currently unavailable.</p>
+          <button 
+            onClick={() => navigate('/buyer-dashboard')}
+            className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black hover:bg-green-700 transition-all shadow-xl"
+          >
+            Back to Marketplace
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const subtotal = product.price * qty;
+  const deliveryFee = 45;
+  const total = subtotal + deliveryFee;
 
   return (
     <div className="min-h-screen bg-[#F9FBE7] pb-24">

@@ -22,6 +22,19 @@ export const getFarmerOrders = async (uId: number) => {
     return rows;
 };
 
+export const getBuyerOrders = async (buyerId: number) => {
+    const [rows] = await db.execute(
+        `SELECT pt.*, p.p_name, p.p_price, u.first_name as farmer_first, u.last_name as farmer_last, p.p_image 
+     FROM purchase_table pt
+     JOIN product_table p ON pt.product_id = p.p_id
+     JOIN users_table u ON p.u_id = u.id
+     WHERE pt.buyer_id = ?
+     ORDER BY pt.req_date DESC`,
+        [buyerId]
+    );
+    return rows;
+};
+
 export const updateOrderStatus = async (reqId: number, status: string, uId: number) => {
     // Ensure the product belongs to the farmer
     const [owner]: any = await db.execute(

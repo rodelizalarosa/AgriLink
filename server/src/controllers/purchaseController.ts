@@ -36,6 +36,16 @@ export const getFarmerOrders = async (req: Request, res: Response) => {
     }
 };
 
+export const getBuyerOrders = async (req: Request, res: Response) => {
+    try {
+        const buyer_id = parseInt(req.params.u_id as string);
+        const orders = await purchaseService.getBuyerOrders(buyer_id);
+        res.json({ orders });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error fetching buyer orders.', error: error.message });
+    }
+};
+
 export const updateOrderStatus = async (req: any, res: Response) => {
     try {
         const req_id = parseInt(req.params.req_id as string);

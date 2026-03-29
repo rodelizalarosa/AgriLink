@@ -117,15 +117,6 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
               Log in to access fresh produce directly from local farmers and support your community.
             </p>
           </div>
-
-          <div className="relative bg-gradient-to-br from-[#5ba409] to-[#74c419] rounded-3xl p-6 shadow-2xl">
-            <div className="bg-white rounded-2xl p-6 flex justify-center space-x-3 text-5xl">
-              <span className="animate-bounce">🌾</span>
-              <span className="animate-bounce" style={{ animationDelay: '0.1s' }}>🥕</span>
-              <span className="animate-bounce" style={{ animationDelay: '0.2s' }}>🍅</span>
-              <span className="animate-bounce" style={{ animationDelay: '0.3s' }}>🥬</span>
-            </div>
-          </div>
         </div>
 
         <div className="animate-slideInRight">

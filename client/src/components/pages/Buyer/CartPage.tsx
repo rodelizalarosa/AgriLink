@@ -29,74 +29,50 @@ interface CartItem {
   stock: number;
 }
 
+import * as cartService from '../../../services/cartService';
+
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
   const [promoCode, setPromoCode] = useState('');
   const [isSummaryVisible, setIsSummaryVisible] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
+  const [cartItems, setCartItems] = useState<cartService.CartItem[]>(cartService.getCart());
 
   useEffect(() => {
+    const handleCartUpdate = () => {
+      setCartItems(cartService.getCart());
+    };
+    window.addEventListener('cart-updated', handleCartUpdate);
+    
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsSummaryVisible(entry.isIntersecting);
-      },
-      { threshold: 0.1 } // Trigger when 10% of the card is visible
+      ([entry]) => setIsSummaryVisible(entry.isIntersecting),
+      { threshold: 0.1 }
     );
 
-    if (summaryRef.current) {
-      observer.observe(summaryRef.current);
-    }
+    if (summaryRef.current) observer.observe(summaryRef.current);
 
     return () => {
-      if (summaryRef.current) {
-        observer.unobserve(summaryRef.current);
-      }
+      window.removeEventListener('cart-updated', handleCartUpdate);
+      if (summaryRef.current) observer.unobserve(summaryRef.current);
     };
   }, []);
-  
-  // Mock cart items
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: '1',
-      name: 'Fresh Red Tomatoes',
-      seller: 'San Jose Farm',
-      price: 85,
-      unit: 'kg',
-      quantity: 2,
-      image: '🍅',
-      stock: 50
-    },
-    {
-      id: '2',
-      name: 'Organic Eggplant',
-      seller: 'Luzon Agri Hub',
-      price: 65,
-      unit: 'kg',
-      quantity: 3,
-      image: '🍆',
-      stock: 30
+
+  const updateQuantity = (id: number, delta: number) => {
+    const item = cartItems.find(i => i.id === id);
+    if (item) {
+      cartService.updateCartQuantity(id, item.quantity + delta);
     }
-  ]);
-
-  const updateQuantity = (id: string, delta: number) => {
-    setCartItems(prev => prev.map(item => {
-      if (item.id === id) {
-        const newQty = Math.max(1, Math.min(item.stock, item.quantity + delta));
-        return { ...item, quantity: newQty };
-      }
-      return item;
-    }));
   };
 
-  const removeItem = (id: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
+  const removeItem = (id: number) => {
+    cartService.removeFromCart(id);
   };
 
-  const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const subtotal = cartService.getCartTotal();
   const shippingFee = cartItems.length > 0 ? 50 : 0;
   const discount = subtotal > 500 ? 50 : 0;
-  const total = subtotal + shippingFee - discount;
   const freeShippingThreshold = 1000;
+  const total = subtotal + (subtotal >= freeShippingThreshold ? 0 : shippingFee) - discount;
   const progressToFreeShipping = Math.min(100, (subtotal / freeShippingThreshold) * 100);
 
   return (

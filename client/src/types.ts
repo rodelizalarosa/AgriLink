@@ -30,6 +30,8 @@ export interface ProductCardProps {
 export interface NavbarProps {
   currentPage: string;
   userType: string;
+  firstName?: string;
+  lastName?: string;
   setUserType: (type: string) => void;
   isLoggedIn: boolean;
   onLogout: () => void;
@@ -135,6 +137,8 @@ export interface UserProfile {
   city: string;
   province: string;
   zipCode: string;
+  latitude?: number;
+  longitude?: number;
   userType: 'farmer' | 'buyer' | 'admin' | 'brgy_official' | 'lgu_official';
   profileImage?: string;
   bio?: string;

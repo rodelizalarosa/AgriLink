@@ -3,6 +3,7 @@ import { authRoutes } from './routes/authRoutes';
 import { productRoutes } from './routes/productRoutes';
 import { purchaseRoutes } from './routes/purchaseRoutes';
 import phenotypingRoutes from './routes/phenotypingRoutes';
+import { userRoutes } from './routes/userRoutes';
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/phenotyping', phenotypingRoutes);
+app.use('/api/users', userRoutes);
 
 // --- GLOBAL ERROR HANDLER ---
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

@@ -31,13 +31,15 @@ import NotificationsPage from './components/pages/NotificationsPage';
 import ProductDetailPage from './components/pages/Buyer/ProductDetailPage';
 import CartPage from './components/pages/Buyer/CartPage';
 import CheckoutPage from './components/pages/Buyer/CheckoutPage';
-import MapPage from './components/pages/Buyer/MapPage';
+import MapPage from './components/pages/MapPage';
 import AboutPage from './components/pages/AboutPage';
 import { ArrowUp } from 'lucide-react';
 import BrgyDashboard from './components/pages/Brgy/BrgyDashboard';
 import BrgyListingsPage from './components/pages/Brgy/BrgyListingsPage';
 import BrgyAwardBadgePage from './components/pages/Brgy/BrgyAwardBadgePage';
 import { ToastContainer } from './components/ui/Toast';
+import OnboardingModal from './components/modals/OnboardingModal';
+import type { FC } from 'react';
 
 // Routes where the sidebar should be shown (farmer/admin/brgy/lgu only)
 const SIDEBAR_ROUTES = [
@@ -70,6 +72,8 @@ const AppContent: React.FC = () => {
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(true);
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
@@ -141,6 +145,11 @@ const AppContent: React.FC = () => {
       setFirstName(localStorage.getItem('agrilink_firstName') || '');
       setLastName(localStorage.getItem('agrilink_lastName') || '');
       setIsLoggedIn(true);
+      const onboardingStatus = localStorage.getItem('agrilink_onboarding_completed');
+      setOnboardingCompleted(onboardingStatus === '1');
+      if (savedRole.toLowerCase() === 'buyer' && onboardingStatus !== '1') {
+        setShowOnboarding(true);
+      }
     }
   }, []);
 
@@ -159,6 +168,14 @@ const AppContent: React.FC = () => {
       localStorage.setItem('agrilink_firstName', userData.first_name || '');
       localStorage.setItem('agrilink_lastName', userData.last_name || '');
       localStorage.setItem('agrilink_id', userData.id || '');
+      
+      const onboardingStatus = userData.onboarding_completed === 1;
+      setOnboardingCompleted(onboardingStatus);
+      localStorage.setItem('agrilink_onboarding_completed', onboardingStatus ? '1' : '0');
+      
+      if (sanitizedRole === 'buyer' && !onboardingStatus) {
+        setShowOnboarding(true);
+      }
     }
 
     localStorage.setItem('agrilink_role', sanitizedRole);
@@ -176,6 +193,8 @@ const AppContent: React.FC = () => {
     localStorage.removeItem('agrilink_lastName');
     localStorage.removeItem('agrilink_token');
     localStorage.removeItem('agrilink_id');
+    localStorage.removeItem('agrilink_onboarding_completed');
+    setShowOnboarding(false);
     navigate('/login');
   };
 
@@ -213,6 +232,15 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-white flex overflow-x-hidden">
       <ToastContainer />
+      {showOnboarding && (
+        <OnboardingModal 
+          isOpen={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+          userId={localStorage.getItem('agrilink_id') || ''}
+          userName={firstName}
+          onComplete={() => setOnboardingCompleted(true)}
+        />
+      )}
       {showSidebar && (
         <Sidebar
           userType={userType}
@@ -231,6 +259,8 @@ const AppContent: React.FC = () => {
           <Navbar
             currentPage={location.pathname}
             userType={userType}
+            firstName={firstName}
+            lastName={lastName}
             setUserType={setUserType}
             isLoggedIn={isLoggedIn}
             onLogout={handleLogout}

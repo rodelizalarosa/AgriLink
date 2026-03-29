@@ -31,16 +31,79 @@ const MOCK_REVIEWS = [
   { name: 'Ana G.',     avatar: 'AG', rating: 4, date: 'Feb 24, 2026', text: 'Good quantity for the price. Packaging could be improved but the product itself is excellent.' },
 ];
 
+import { API_BASE_URL } from '../../../api/apiConfig';
+import * as cartService from '../../../services/cartService';
+
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const product: Product | undefined = sampleProducts.find(p => p.id === Number(id));
-
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
   const [wishlisted, setWishlisted] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'reviews' | 'seller'>('details');
-  const [orderSuccess, setOrderSuccess] = useState(false);
   const [cartSuccess, setCartSuccess] = useState(false);
+  const [related, setRelated] = useState<Product[]>([]);
+
+  React.useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/products/${id}`);
+        if (!res.ok) throw new Error('Product not found');
+        const data = await res.json();
+        
+        const p = data.product;
+        const mappedProduct: Product = {
+          id: p.p_id,
+          name: p.p_name,
+          price: parseFloat(p.p_price),
+          unit: p.p_unit,
+          seller: `${p.first_name} ${p.last_name}`,
+          location: p.city || 'Local Farm',
+          stock: parseFloat(p.p_quantity),
+          image: p.p_image || '🌱',
+          category: p.cat_name || 'Others',
+          badges: p.p_status === 'active' ? ['Direct Source'] : []
+        };
+        setProduct(mappedProduct);
+        
+        // Fetch related products (mock for now from the same category)
+        const allRes = await fetch(`${API_BASE_URL}/products`);
+        const allData = await allRes.json();
+        if (allData.products) {
+          const filtered = allData.products
+            .filter((item: any) => item.cat_name === p.cat_name && item.p_id !== p.p_id)
+            .slice(0, 3)
+            .map((item: any) => ({
+              id: item.p_id,
+              name: item.p_name,
+              price: parseFloat(item.p_price),
+              unit: item.p_unit,
+              seller: `${item.first_name} ${item.last_name}`,
+              location: item.city || 'Local Farm',
+              stock: parseFloat(item.p_quantity),
+              image: item.p_image || '🌱',
+              category: item.cat_name || 'Others'
+            }));
+          setRelated(filtered);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F9FBE7]">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-600"></div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -65,11 +128,10 @@ const ProductDetailPage: React.FC = () => {
   };
 
   const handleCart = () => {
+    cartService.addToCart(product, qty);
     setCartSuccess(true);
     setTimeout(() => setCartSuccess(false), 2500);
   };
-
-  const related = sampleProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 3);
 
   return (
     <div className="min-h-screen bg-[#F9FBE7]">
@@ -132,7 +194,7 @@ const ProductDetailPage: React.FC = () => {
               />
 
               {/* Bottom overlay */}
-              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/40 to-transparent" />
               <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
                 <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-2xl text-white border border-white/10">
                   <MapPin className="w-4 h-4 text-green-400" />
@@ -260,13 +322,13 @@ const ProductDetailPage: React.FC = () => {
             <div className="flex gap-4">
               <button
                 onClick={handleOrder}
-                className="flex-[2] py-6 border-2 border-green-600 bg-green-600 hover:bg-transparent text-white hover:text-green-600 rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl shadow-green-600/20 hover:shadow-none hover:-translate-y-0.5 active:scale-[0.98]"
+                className="flex-2 py-6 border-2 border-green-600 bg-green-600 hover:bg-transparent text-white hover:text-green-600 rounded-4xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl shadow-green-600/20 hover:shadow-none hover:-translate-y-0.5 active:scale-[0.98]"
               >
-                {orderSuccess ? <><CheckCircle className="w-6 h-6" /> Order Placed!</> : <><CheckCircle className="w-6 h-6" /> Place Order</>}
+                <CheckCircle className="w-6 h-6" /> Place Order
               </button>
               <button
                 onClick={handleCart}
-                className="flex-1 py-6 border-2 border-green-600 bg-transparent text-green-600 hover:bg-green-600 hover:text-white rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 transition-all hover:shadow-2xl hover:shadow-green-600/20 hover:-translate-y-0.5 active:scale-[0.98]"
+                className="flex-1 py-6 border-2 border-green-600 bg-transparent text-green-600 hover:bg-green-600 hover:text-white rounded-4xl font-black text-lg flex items-center justify-center gap-3 transition-all hover:shadow-2xl hover:shadow-green-600/20 hover:-translate-y-0.5 active:scale-[0.98]"
               >
                 {cartSuccess ? <><CheckCircle className="w-6 h-6" /> Added!</> : <><ShoppingCart className="w-6 h-6" /> Add to Cart</>}
               </button>

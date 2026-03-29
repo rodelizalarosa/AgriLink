@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { buyerNotifications, farmerNotifications, sampleConversations } from '../../data';
 import LogoutConfirmationModal from '../ui/LogoutConfirmationModal';
 
-const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLogout }) => {
+const Navbar: React.FC<NavbarProps> = ({ userType, firstName, lastName, setUserType, isLoggedIn, onLogout }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
@@ -231,7 +231,7 @@ const Navbar: React.FC<NavbarProps> = ({ userType, setUserType, isLoggedIn, onLo
                     <div className="bg-green-100 p-2 rounded-full">
                       <UserIcon className="w-5 h-5 text-[#4CAF50]" />
                     </div>
-                    <span className="font-bold capitalize">{userType}</span>
+                    <span className="font-bold capitalize">{firstName || userType}</span>
                   </Link>
                   <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center space-x-1 text-red-500 hover:text-red-600 font-bold transition-colors">
                     <LogOut className="w-5 h-5" />

@@ -58,7 +58,7 @@ export const verifyController = async (req: Request, res: Response) => {
     // Update the user's is_verified status in the database
     // Also fetch the role for auto-login
     const [users]: any = await db.execute(`
-      SELECT a.id as auth_id, u.id as user_id, r.role_name, u.first_name, u.last_name 
+      SELECT a.id as auth_id, u.id as user_id, r.role_name, u.first_name, u.last_name, u.onboarding_completed
       FROM auth_table a 
       JOIN role_table r ON a.role_id = r.id 
       LEFT JOIN users_table u ON a.id = u.auth_id
@@ -76,7 +76,7 @@ export const verifyController = async (req: Request, res: Response) => {
 
     // Generate a proper session JWT for auto-login
     const loginToken = jwt.sign(
-      { id: user.user_id, email: email, role: role, firstName: user.first_name, lastName: user.last_name },
+      { id: user.user_id, email: email, role: role, firstName: user.first_name, lastName: user.last_name, onboarding_completed: user.onboarding_completed },
       process.env.JWT_SECRET || 'supersecretkey',
       { expiresIn: '1d' }
     );
@@ -109,7 +109,8 @@ export const loginController = async (req: Request, res: Response) => {
         email: result.email,
         role: result.role_name,
         firstName: result.first_name,
-        lastName: result.last_name
+        lastName: result.last_name,
+        onboarding_completed: result.onboarding_completed
       },
       process.env.JWT_SECRET || 'supersecretkey',
       { expiresIn: '1d' }

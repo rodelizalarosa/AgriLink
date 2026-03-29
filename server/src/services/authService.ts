@@ -59,8 +59,8 @@ export const registerUser = async (data: RegisterInput) => {
 
     // 5. Insert into users_table
     const [userResult] = await connection.execute(
-      'INSERT INTO users_table (auth_id, first_name, last_name) VALUES (?, ?, ?)',
-      [authId, data.firstName || '', data.lastName || '']
+      'INSERT INTO users_table (auth_id, first_name, last_name, role) VALUES (?, ?, ?, ?)',
+      [authId, data.firstName || '', data.lastName || '', data.role_name]
     );
 
     const userId = (userResult as any).insertId;
@@ -101,8 +101,8 @@ export const registerUser = async (data: RegisterInput) => {
 };
 
 export const loginUser = async (data: LoginInput) => {
-  const [users]: any = await db.execute(
-    `SELECT a.id as auth_id, u.id as user_id, a.password_hash, a.is_verified, r.role_name, u.first_name, u.last_name 
+    const [users]: any = await db.execute(
+    `SELECT a.id as auth_id, u.id as user_id, a.password_hash, a.is_verified, r.role_name, u.first_name, u.last_name, u.onboarding_completed
      FROM auth_table a 
      JOIN role_table r ON a.role_id = r.id 
      LEFT JOIN users_table u ON a.id = u.auth_id
@@ -132,6 +132,7 @@ export const loginUser = async (data: LoginInput) => {
     email: data.email,
     role_name: user.role_name,
     first_name: user.first_name,
-    last_name: user.last_name
+    last_name: user.last_name,
+    onboarding_completed: user.onboarding_completed
   };
 };

@@ -31,6 +31,7 @@ async function setupDatabase() {
                 first_name VARCHAR(100) NOT NULL,
                 last_name VARCHAR(100) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                onboarding_completed TINYINT(1) DEFAULT 0,
                 KEY auth_id (auth_id),
                 CONSTRAINT users_table_ibfk_1 FOREIGN KEY (auth_id) REFERENCES auth_table (id) ON DELETE CASCADE
             )
