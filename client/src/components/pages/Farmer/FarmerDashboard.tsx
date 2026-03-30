@@ -23,6 +23,9 @@ const FarmerDashboard: React.FC<FarmerDashboardProps> = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => {
+    return localStorage.getItem('agrilink_onboarding_completed') === '1';
+  });
 
   const userId = localStorage.getItem('agrilink_id');
   const firstName = localStorage.getItem('agrilink_firstName') || 'Farmer';
@@ -84,10 +87,14 @@ const FarmerDashboard: React.FC<FarmerDashboardProps> = () => {
     window.addEventListener('product-added', handleRefresh);
     window.addEventListener('order-updated', handleRefresh);
     window.addEventListener('product-updated', handleRefresh);
+    const handleCompletion = () => setOnboardingCompleted(true);
+    window.addEventListener('agrilink-onboarding-completed', handleCompletion);
+
     return () => {
       window.removeEventListener('product-added', handleRefresh);
       window.removeEventListener('order-updated', handleRefresh);
       window.removeEventListener('product-updated', handleRefresh);
+      window.removeEventListener('agrilink-onboarding-completed', handleCompletion);
     };
   }, [userId]);
 
@@ -242,24 +249,26 @@ const FarmerDashboard: React.FC<FarmerDashboardProps> = () => {
 
       <div className="max-w-7xl mx-auto px-4 -mt-10">
         {/* 🚨 Profile Setup Action Required */}
-        <div className="bg-red-50 border-1 border-red-500/20 p-5 mb-10 rounded-[2rem] shadow-xl shadow-red-500/5 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden z-10 animate-in fade-in slide-in-from-bottom-4">
-          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-32 h-32 bg-red-500/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-start md:items-center gap-4 relative z-10">
-            <div className="bg-red-500 text-white p-3 rounded-2xl shadow-inner shadow-black/20 shrink-0 hidden md:flex">
-              <AlertTriangle className="w-6 h-6" />
+        {!onboardingCompleted && (
+          <div className="bg-red-50 border-1 border-red-500/20 p-5 mb-10 rounded-[2rem] shadow-xl shadow-red-500/5 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden z-10 animate-in fade-in slide-in-from-bottom-4">
+            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-32 h-32 bg-red-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-start md:items-center gap-4 relative z-10">
+              <div className="bg-red-500 text-white p-3 rounded-2xl shadow-inner shadow-black/20 shrink-0 hidden md:flex">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-red-900 font-black text-xl tracking-tight italic uppercase mb-1">Action Required: Complete Your Farm Profile</h3>
+                <p className="text-red-700/80 font-bold text-sm">You must set up your farm address and pin your location on the map before your listings become visible to buyers.</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-red-900 font-black text-xl tracking-tight italic uppercase mb-1">Action Required: Complete Your Farm Profile</h3>
-              <p className="text-red-700/80 font-bold text-sm">You must set up your farm address and pin your location on the map before your listings become visible to buyers.</p>
-            </div>
+            <button 
+              onClick={() => navigate('/profile?setup=true')} 
+              className="group bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-red-900/20 hover:-translate-y-1 transition-all active:scale-95 whitespace-nowrap flex items-center justify-center gap-3 relative z-10"
+            >
+              Setup Location <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
           </div>
-          <button 
-            onClick={() => navigate('/profile?setup=true')} 
-            className="group bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-red-900/20 hover:-translate-y-1 transition-all active:scale-95 whitespace-nowrap flex items-center justify-center gap-3 relative z-10"
-          >
-            Setup Location <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </div>
+        )}
 
         {/* 📊 Real-Time Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">

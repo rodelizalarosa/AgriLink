@@ -133,6 +133,7 @@ export interface UserProfile {
   lastName: string;
   email: string;
   phone: string;
+  // Home address
   address: string;
   city: string;
   province: string;
@@ -146,6 +147,14 @@ export interface UserProfile {
   farmName?: string;
   farmSize?: string;
   deliveryRange?: string;
+  // Farm address (farmer only)
+  farmAddress?: string;
+  farmCity?: string;
+  farmProvince?: string;
+  farmZipCode?: string;
+  farmLatitude?: number;
+  farmLongitude?: number;
+  farmAddressSameAsHome?: boolean;
 }
 
 export interface Message {

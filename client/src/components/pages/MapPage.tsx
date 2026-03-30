@@ -9,12 +9,12 @@ import { API_BASE_URL } from '../../api/apiConfig';
 interface Farmer {
   id: number;
   name: string;
-  produce: string[];
-  distance: string;
-  rating: number;
-  active: boolean;
+  farm_address: string;
+  farm_city: string;
+  farm_province: string;
   latitude: number;
   longitude: number;
+  phone: string;
 }
 
 const MapPage: React.FC = () => {
@@ -31,10 +31,42 @@ const MapPage: React.FC = () => {
   const [userLocation, setUserLocation] = useState<{ latitude: number, longitude: number } | null>(null);
   const [routeData, setRouteData] = useState<any>(null);
   const [navigationInfo, setNavigationInfo] = useState<{ distance: string, duration: string } | null>(null);
+  const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [loadingFarmers, setLoadingFarmers] = useState(true);
+  const [showAllFarms, setShowAllFarms] = useState(true);
+  const [focusMode, setFocusMode] = useState(false);
   
+  // Fetch farmers from API
+  useEffect(() => {
+    const fetchFarmers = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/farmers/all`);
+        if (response.ok) {
+          const data = await response.json();
+          setFarmers(data);
+          
+          // Center map on first farmer if we have data
+          if (data.length > 0) {
+            setViewState(prev => ({
+              ...prev,
+              latitude: data[0].latitude,
+              longitude: data[0].longitude,
+              zoom: 12.5
+            }));
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching farmers:', err);
+      } finally {
+        setLoadingFarmers(false);
+      }
+    };
+
+    fetchFarmers();
+  }, []);
+
   // Get User Location
   useEffect(() => {
-    // 1. Try Geolocation API
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -42,7 +74,6 @@ const MapPage: React.FC = () => {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
           });
-          // Update view to center on user
           setViewState(prev => ({
             ...prev,
             latitude: position.coords.latitude,
@@ -52,7 +83,6 @@ const MapPage: React.FC = () => {
         },
         (error) => {
           console.warn("Geolocation error:", error);
-          // 2. Fallback to Profile Location if available
           fetchUserProfileLocation();
         }
       );
@@ -95,6 +125,7 @@ const MapPage: React.FC = () => {
     if (!selectedFarmerId || !userLocation) {
       setRouteData(null);
       setNavigationInfo(null);
+      setFocusMode(false);
       return;
     }
 
@@ -102,7 +133,7 @@ const MapPage: React.FC = () => {
     if (!selectedFarmer) return;
 
     getRoute(selectedFarmer);
-  }, [selectedFarmerId, userLocation]);
+  }, [selectedFarmerId, userLocation, farmers]);
 
   const getRoute = async (farmer: Farmer) => {
     const token = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -126,7 +157,6 @@ const MapPage: React.FC = () => {
           }
         });
 
-        // Set distance and duration
         const distKm = (data.distance / 1000).toFixed(1);
         const durMin = Math.floor(data.duration / 60);
         setNavigationInfo({
@@ -138,50 +168,29 @@ const MapPage: React.FC = () => {
       console.error("Error fetching route:", err);
     }
   };
-  
-  // Mock data for farmers
-  const farmers: Farmer[] = [
-    {
-      id: 1,
-      name: "Minglanilla Organic Farm",
-      produce: ["Vegetables", "Herbs"],
-      distance: "1.2 km",
-      rating: 4.8,
-      active: true,
-      latitude: 10.2442,
-      longitude: 123.7786
-    },
-    {
-      id: 2,
-      name: "Cebu Valley Orchard",
-      produce: ["Fruits", "Honey"],
-      distance: "2.5 km",
-      rating: 4.9,
-      active: false,
-      latitude: 10.2405,
-      longitude: 123.7850
-    },
-    {
-      id: 3,
-      name: "Sunrise Poultry & Grains",
-      produce: ["Eggs", "Corn", "Rice"],
-      distance: "3.8 km",
-      rating: 4.7,
-      active: true,
-      latitude: 10.2510,
-      longitude: 123.7720
-    },
-    {
-      id: 4,
-      name: "South Cebu Garden",
-      produce: ["Microgreens", "Lettuce"],
-      distance: "0.8 km",
-      rating: 5.0,
-      active: true,
-      latitude: 10.2350,
-      longitude: 123.7900
-    }
-  ];
+
+  // Calculate distance between user and farmer
+  const getDistanceString = (farmer: Farmer): string => {
+    if (!userLocation) return '--';
+    const R = 6371;
+    const dLat = (farmer.latitude - userLocation.latitude) * Math.PI / 180;
+    const dLon = (farmer.longitude - userLocation.longitude) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(userLocation.latitude * Math.PI / 180) * Math.cos(farmer.latitude * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c;
+    return `${d.toFixed(1)} km`;
+  };
+
+  // Filter farmers by search
+  const filteredFarmers = farmers.filter(f => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return f.name.toLowerCase().includes(q) || 
+           (f.farm_city && f.farm_city.toLowerCase().includes(q)) ||
+           (f.farm_address && f.farm_address.toLowerCase().includes(q));
+  });
 
   return (
     <div className="flex flex-col md:flex-row h-auto md:h-[calc(100vh-80px)] bg-gray-50 overflow-x-hidden md:overflow-hidden">
@@ -191,7 +200,6 @@ const MapPage: React.FC = () => {
           {...viewState}
           onMove={evt => setViewState(evt.viewState)}
           onClick={(e) => {
-            // Only clear selection if clicking on the map background, not a marker
             if (!e.originalEvent.defaultPrevented) setSelectedFarmerId(null);
           }}
           mapStyle={customMapStyle as any}
@@ -232,95 +240,127 @@ const MapPage: React.FC = () => {
                 }}
                 paint={{
                   'line-color': '#5ba409',
-                  'line-width': 5,
-                  'line-opacity': 0.75,
-                  'line-dasharray': [1, 1]
+                  'line-width': 6,
+                  'line-opacity': 1,
+                  'line-dasharray': [0.5, 0.5]
                 }}
               />
             </Source>
           )}
 
-          {farmers.map(farmer => (
-            <Marker 
-              key={farmer.id} 
-              longitude={farmer.longitude} 
-              latitude={farmer.latitude}
-              anchor="bottom"
-              onClick={e => {
-                e.originalEvent.stopPropagation();
-                setSelectedFarmerId(farmer.id);
-                setViewState({
-                  ...viewState,
-                  longitude: farmer.longitude,
-                  latitude: farmer.latitude,
-                  zoom: 15
-                });
-              }}
-            >
-            <div className={`relative flex flex-col items-center justify-center transform transition-all duration-500 cursor-pointer ${selectedFarmerId === farmer.id ? 'scale-110 z-40' : 'hover:scale-110 z-10 hover:-translate-y-2'}`}>
-              
-              {/* Premium Marker Pin */}
-              <div className="relative group">
-                {/* Ping Animation for selected or hovering */}
-                <div className={`absolute -inset-3 rounded-full bg-[#5ba409] opacity-20 transition-all duration-500 z-0 ${selectedFarmerId === farmer.id ? 'animate-ping' : 'scale-0 group-hover:scale-100'}`} />
-                
-                <div className={`relative w-12 h-12 bg-white rounded-full p-1 shadow-2xl border-2 transition-all duration-500 overflow-hidden flex items-center justify-center z-10 ${selectedFarmerId === farmer.id ? 'border-[#5ba409] ring-4 ring-[#5ba409]/20' : 'border-white hover:border-gray-100'}`}>
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#74c311] to-[#4a8608] opacity-10" />
-                  <MapPin className={`relative w-5 h-5 z-10 transition-colors ${selectedFarmerId === farmer.id ? 'text-[#5ba409] fill-[#5ba409]/20' : 'text-gray-400'}`} />
-                </div>
-                
-                {/* Pin Point */}
-                <div className="w-1.5 h-1.5 bg-gray-900 rounded-full absolute -bottom-2 left-1/2 -translate-x-1/2 shadow-sm z-0" />
-              </div>
+          {filteredFarmers.map(farmer => {
+            const isSelected = selectedFarmerId === farmer.id;
+            // Conditional visibility for Focus Mode
+            if (focusMode && !isSelected) return null;
+            if (!showAllFarms && !isSelected) return null;
 
-              {/* Premium Floating Popup */}
-              {selectedFarmerId === farmer.id && (
-                <div className="absolute bottom-full mb-6 w-64 bg-white/90 backdrop-blur-2xl p-5 rounded-[2rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.15)] border border-white z-50 animate-in fade-in slide-in-from-bottom-8 duration-500 cursor-default" onClick={e => e.stopPropagation()}>
-                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-white/90 backdrop-blur-2xl border-r border-b border-white rotate-45" />
-                  <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-2">
-                       <span className="bg-[#5ba409]/10 text-[#5ba409] text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">Verified Farm</span>
-                       <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100">
-                         <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                         <span className="text-[10px] font-black text-yellow-700">{farmer.rating}</span>
-                       </div>
-                    </div>
-                    <h3 className="font-black text-gray-900 text-lg leading-tight uppercase italic mb-1">{farmer.name}</h3>
-                    <p className="text-xs text-gray-500 font-medium mb-4 flex items-center gap-1">
-                      <Navigation className="w-3 h-3 text-gray-400" /> 
-                      {selectedFarmerId === farmer.id && navigationInfo ? navigationInfo.distance : farmer.distance} from your location
-                    </p>
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      {farmer.produce.map((item, idx) => (
-                        <span key={idx} className="text-[10px] font-bold bg-gray-50 text-gray-600 px-2 py-1 rounded-md uppercase tracking-widest border border-gray-100">
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                    <button onClick={() => navigate(`/profile/${farmer.id}`)} className="w-full bg-[#5ba409] text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-[#4a8608] transition-colors shadow-lg shadow-green-900/20 active:scale-95">
-                      Visit Market
-                    </button>
+            return (
+              <Marker 
+                key={farmer.id} 
+                longitude={farmer.longitude} 
+                latitude={farmer.latitude}
+                anchor="bottom"
+                style={{ zIndex: isSelected ? 50 : 10 }}
+                onClick={e => {
+                  e.originalEvent.stopPropagation();
+                  setSelectedFarmerId(farmer.id);
+                  setViewState({
+                    ...viewState,
+                    longitude: farmer.longitude,
+                    latitude: farmer.latitude,
+                    zoom: 15
+                  });
+                }}
+              >
+              <div className={`relative flex flex-col items-center justify-center transform transition-all duration-500 cursor-pointer ${isSelected ? 'scale-125' : 'hover:scale-110 hover:-translate-y-2'} ${!isSelected && selectedFarmerId ? 'opacity-40 grayscale-[0.5]' : 'opacity-100'}`}>
+                
+                {/* Premium Marker Pin */}
+                <div className="relative group">
+                  <div className={`absolute -inset-3 rounded-full bg-[#5ba409] opacity-20 transition-all duration-500 z-0 ${isSelected ? 'animate-ping' : 'scale-0 group-hover:scale-100'}`} />
+                  
+                  <div className={`relative w-12 h-12 bg-white rounded-full p-1 shadow-2xl border-2 transition-all duration-500 overflow-hidden flex items-center justify-center z-10 ${isSelected ? 'border-[#5ba409] ring-4 ring-[#5ba409]/20 shadow-green-500/40' : 'border-white hover:border-gray-100'}`}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#74c311] to-[#4a8608] opacity-10" />
+                    <MapPin className={`relative w-5 h-5 z-10 transition-colors ${isSelected ? 'text-[#5ba409] fill-[#5ba409]/20' : 'text-gray-400'}`} />
                   </div>
+                  
+                  <div className="w-1.5 h-1.5 bg-gray-900 rounded-full absolute -bottom-2 left-1/2 -translate-x-1/2 shadow-sm z-0" />
                 </div>
-              )}
-            </div>
-            </Marker>
-          ))}
+
+                {/* Premium Floating Popup */}
+                {isSelected && (
+                  <div className="absolute bottom-full mb-6 w-64 bg-white/95 backdrop-blur-2xl p-5 rounded-[2rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.15)] border border-white z-50 animate-in fade-in slide-in-from-bottom-8 duration-500 cursor-default" onClick={e => e.stopPropagation()}>
+                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-white/95 backdrop-blur-2xl border-r border-b border-white rotate-45" />
+                    <div className="relative z-10">
+                      <div className="flex justify-between items-start mb-2">
+                         <span className="bg-[#5ba409]/10 text-[#5ba409] text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">Verified Farm</span>
+                      </div>
+                      <h3 className="font-black text-gray-900 text-lg leading-tight uppercase italic mb-1">{farmer.name}</h3>
+                      <p className="text-xs text-gray-500 font-medium mb-2 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-gray-400" /> 
+                        {farmer.farm_city}{farmer.farm_province ? `, ${farmer.farm_province}` : ''}
+                      </p>
+                      <p className="text-xs text-gray-500 font-medium mb-4 flex items-center gap-1">
+                        <Navigation className="w-3 h-3 text-gray-400" /> 
+                        {navigationInfo ? navigationInfo.distance : getDistanceString(farmer)} from your location
+                      </p>
+                      <button onClick={() => navigate(`/profile/${farmer.id}`)} className="w-full bg-[#5ba409] text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-[#4a8608] transition-colors shadow-lg shadow-green-900/20 active:scale-95">
+                        Visit Market
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              </Marker>
+            );
+          })}
         </Map>
         
         {/* Floating UI Elements on Map */}
-        <div className="absolute top-4 left-4 md:top-6 md:left-6 flex space-x-2 z-10 pointer-events-none">
-          <div className="bg-white/90 backdrop-blur-md p-2 rounded-xl shadow-lg border border-white/50 flex space-x-2 pointer-events-auto">
-            <button className="p-2 bg-green-50 text-[#5ba409] rounded-lg hover:bg-green-100 transition-colors">
+        <div className="absolute top-4 left-4 md:top-6 md:left-6 flex flex-col gap-3 z-10 pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-md p-2 rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-white/50 flex flex-col md:flex-row gap-2 pointer-events-auto">
+            <button 
+              onClick={() => setShowAllFarms(!showAllFarms)}
+              className={`p-2 rounded-xl transition-all flex items-center gap-2 group ${showAllFarms ? 'bg-green-50 text-[#5ba409] shadow-inner' : 'text-gray-400 hover:bg-gray-50'}`}
+              title={showAllFarms ? "Showing all farms" : "Showing selected only"}
+            >
               <MapIcon className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest pr-1 hidden md:block">
+                {showAllFarms ? "View All" : "Focus Mode"}
+              </span>
             </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors">
+            <div className="w-px h-6 bg-gray-100 hidden md:block" />
+            <button 
+              onClick={() => {
+                if (userLocation) {
+                  setViewState(prev => ({ ...prev, latitude: userLocation.latitude, longitude: userLocation.longitude, zoom: 14 }));
+                }
+              }}
+              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all"
+              title="My Location"
+            >
               <Navigation className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </div>
+
+          {selectedFarmerId && (
+            <button 
+              onClick={() => setFocusMode(!focusMode)}
+              className={`bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-[1.25rem] shadow-xl border border-white/50 flex items-center gap-3 pointer-events-auto group active:scale-95 transition-all animate-in slide-in-from-left-4 duration-500 ${focusMode ? 'ring-2 ring-green-500/20' : ''}`}
+            >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${focusMode ? 'bg-[#5ba409] text-white' : 'bg-gray-100 text-gray-400'}`}>
+                {focusMode ? <Eye className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+              </div>
+              <div className="text-left">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] leading-none mb-1 text-gray-400">Navigation Priority</p>
+                <p className={`text-xs font-black italic uppercase leading-none ${focusMode ? 'text-[#5ba409]' : 'text-gray-600'}`}>
+                  {focusMode ? "Focus Mode Active" : "Enable Focus Mode"}
+                </p>
+              </div>
+            </button>
+          )}
         </div>
 
-        {/* Token warning message if env token is missing */}
+        {/* Token warning */}
         {!import.meta.env.VITE_MAPBOX_TOKEN && (
           <div className="absolute bottom-4 left-4 max-w-[280px] bg-red-50/90 backdrop-blur-sm border border-red-200 text-red-600 px-4 py-3 rounded-xl shadow-lg z-10 pointer-events-none">
             <p className="text-xs font-bold flex items-center gap-1.5"><Info className="w-3.5 h-3.5" /> Mapbox Token Missing</p>
@@ -338,7 +378,7 @@ const MapPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input 
               type="text" 
-              placeholder="Search by farm or product..." 
+              placeholder="Search by name or location..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 md:py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#5ba409]/20 transition-all outline-none text-gray-700 text-sm md:text-base"
@@ -358,70 +398,82 @@ const MapPage: React.FC = () => {
             </div>
           )}
           
-          {/* Section: Active Farmers */}
+          {/* Section: Farmers */}
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-800 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-[#5ba409]" />
-                Farms in Minglanilla, Cebu
+                Registered Farms
               </h3>
               <span className="text-xs font-bold text-[#5ba409] bg-green-50 px-2 py-1 rounded-full">
-                {farmers.length} Found
+                {filteredFarmers.length} Found
               </span>
             </div>
 
-            <div className="space-y-4">
-              {farmers.map(farmer => (
-                <div 
-                  key={farmer.id} 
-                  className={`group p-4 bg-white border rounded-2xl hover:border-[#5ba409]/30 hover:shadow-md transition-all cursor-pointer relative overflow-hidden ${selectedFarmerId === farmer.id ? 'border-[#5ba409]/50 shadow-md ring-2 ring-[#5ba409]/10' : 'border-gray-100'}`}
-                  onClick={() => {
-                    setSelectedFarmerId(farmer.id);
-                    setViewState({
-                      ...viewState,
-                      longitude: farmer.longitude,
-                      latitude: farmer.latitude,
-                      zoom: 15
-                    });
-                  }}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h4 className="font-bold text-gray-900 group-hover:text-[#5ba409] transition-colors">{farmer.name}</h4>
-                      <p className="text-sm text-gray-500 flex items-center gap-1">
-                        <Navigation className="w-3 h-3" /> {selectedFarmerId === farmer.id && navigationInfo ? navigationInfo.distance : farmer.distance} away
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg">
-                      <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                      <span className="text-xs font-bold text-yellow-700">{farmer.rating}</span>
-                    </div>
+            {loadingFarmers ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
+                    <div className="h-3 bg-gray-200 rounded w-1/2 mb-2" />
+                    <div className="h-3 bg-gray-200 rounded w-1/3" />
                   </div>
-                  
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {farmer.produce.map((item, idx) => (
-                      <span key={idx} className="text-[11px] font-semibold bg-gray-50 text-gray-600 px-2 py-1 rounded-md uppercase tracking-tight">
-                        {item}
-                      </span>
-                    ))}
-                  </div>
+                ))}
+              </div>
+            ) : filteredFarmers.length === 0 ? (
+              <div className="bg-gray-50 rounded-2xl p-8 border-2 border-dashed border-gray-200 text-center">
+                <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  {searchQuery ? 'No farms match your search' : 'No registered farms yet'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredFarmers.map(farmer => (
+                  <div 
+                    key={farmer.id} 
+                    className={`group p-4 bg-white border rounded-2xl hover:border-[#5ba409]/30 hover:shadow-md transition-all cursor-pointer relative overflow-hidden ${selectedFarmerId === farmer.id ? 'border-[#5ba409]/50 shadow-md ring-2 ring-[#5ba409]/10' : 'border-gray-100'}`}
+                    onClick={() => {
+                      setSelectedFarmerId(farmer.id);
+                      setViewState({
+                        ...viewState,
+                        longitude: farmer.longitude,
+                        latitude: farmer.latitude,
+                        zoom: 15
+                      });
+                    }}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-bold text-gray-900 group-hover:text-[#5ba409] transition-colors">{farmer.name}</h4>
+                        <p className="text-sm text-gray-500 flex items-center gap-1">
+                          <MapPin className="w-3 h-3" /> {farmer.farm_city}{farmer.farm_province ? `, ${farmer.farm_province}` : ''}
+                        </p>
+                        <p className="text-sm text-gray-400 flex items-center gap-1 mt-0.5">
+                          <Navigation className="w-3 h-3" /> {selectedFarmerId === farmer.id && navigationInfo ? navigationInfo.distance : getDistanceString(farmer)} away
+                        </p>
+                      </div>
+                    </div>
 
-                  <div className="mt-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="text-xs font-bold text-[#5ba409] flex items-center gap-1">
-                      View Profile <ChevronRight className="w-4 h-4" />
-                    </button>
-                    <div className="flex space-x-2">
-                      <button className="p-2 bg-green-50 text-[#5ba409] rounded-lg">
-                        <Phone className="w-4 h-4" />
+                    <div className="mt-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="text-xs font-bold text-[#5ba409] flex items-center gap-1" onClick={(e) => { e.stopPropagation(); navigate(`/profile/${farmer.id}`); }}>
+                        View Profile <ChevronRight className="w-4 h-4" />
                       </button>
+                      {farmer.phone && (
+                        <div className="flex space-x-2">
+                          <button className="p-2 bg-green-50 text-[#5ba409] rounded-lg">
+                            <Phone className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Section: Possible Routes */}
+          {/* Section: Navigation & Routes */}
            <div className="pt-6 border-t border-gray-100">
             <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
               <Navigation className="w-5 h-5 text-[#5ba409]" />

@@ -23,13 +23,15 @@ interface OnboardingModalProps {
   onClose: () => void;
   userId: string;
   userName: string;
+  userType: string;
   onComplete: () => void;
 }
 
-const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, userId, userName, onComplete }) => {
+const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, userId, userName, userType, onComplete }) => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
+  const isFarmer = userType.toLowerCase() === 'farmer';
 
   const [formData, setFormData] = useState({
     phone: '',
@@ -39,10 +41,24 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
     zip_code: '',
     latitude: 10.3157,
     longitude: 123.8854,
-    interests: [] as string[]
+    interests: [] as string[],
+    // Farm fields
+    farm_address: '',
+    farm_city: '',
+    farm_province: '',
+    farm_zip_code: '',
+    farm_latitude: 10.3157,
+    farm_longitude: 123.8854,
+    farm_address_same_as_home: true
   });
 
   const [viewState, setViewState] = useState({
+    longitude: 123.8854,
+    latitude: 10.3157,
+    zoom: 12
+  });
+
+  const [farmViewState, setFarmViewState] = useState({
     longitude: 123.8854,
     latitude: 10.3157,
     zoom: 12
@@ -73,7 +89,15 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
           province: formData.province,
           zip_code: formData.zip_code,
           latitude: formData.latitude,
-          longitude: formData.longitude
+          longitude: formData.longitude,
+          // Farm fields
+          farm_address: formData.farm_address,
+          farm_city: formData.farm_city,
+          farm_province: formData.farm_province,
+          farm_zip_code: formData.farm_zip_code,
+          farm_latitude: formData.farm_latitude,
+          farm_longitude: formData.farm_longitude,
+          farm_address_same_as_home: formData.farm_address_same_as_home
         })
       });
 
@@ -91,13 +115,81 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
     }
   };
 
-  const steps = [
+  // 🌍 Auto-Geocode Home Address
+  useEffect(() => {
+    if (step !== 3 || !formData.address || formData.address.length < 3) return;
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const query = encodeURIComponent(`${formData.address}, ${formData.city}, ${formData.province}, Philippines`);
+        const token = import.meta.env.VITE_MAPBOX_TOKEN;
+        if (!token) return;
+
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${token}&limit=1&country=ph`
+        );
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          const [lng, lat] = data.features[0].center;
+          setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
+          setViewState(prev => ({ ...prev, latitude: lat, longitude: lng, zoom: 15 }));
+        }
+      } catch (error) {
+        console.error('Geocoding error:', error);
+      }
+    }, 1500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [formData.address, formData.city, formData.province, step]);
+
+  // 🚜 Auto-Geocode Farm Address
+  useEffect(() => {
+    // Only geocode if the user is a farmer AND we're on the new "Farm Info" step (Step 4 for farmers)
+    if (!isFarmer || step !== 4 || formData.farm_address_same_as_home || !formData.farm_address || formData.farm_address.length < 3) return;
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const query = encodeURIComponent(`${formData.farm_address}, ${formData.farm_city}, ${formData.farm_province}, Philippines`);
+        const token = import.meta.env.VITE_MAPBOX_TOKEN;
+        if (!token) return;
+
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${token}&limit=1&country=ph`
+        );
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          const [lng, lat] = data.features[0].center;
+          setFormData(prev => ({ ...prev, farm_latitude: lat, farm_longitude: lng }));
+          setFarmViewState(prev => ({ ...prev, latitude: lat, longitude: lng, zoom: 15 }));
+        }
+      } catch (error) {
+        console.error('Farm geocoding error:', error);
+      }
+    }, 1500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [formData.farm_address, formData.farm_city, formData.farm_province, step, isFarmer]);
+
+  const buyerSteps = [
     { title: 'Welcome', icon: <User className="w-6 h-6" /> },
     { title: 'Contact', icon: <Phone className="w-6 h-6" /> },
     { title: 'Location', icon: <MapPin className="w-6 h-6" /> },
     { title: 'Interests', icon: <Heart className="w-6 h-6" /> },
     { title: 'Ready!', icon: <CheckCircle className="w-6 h-6" /> }
   ];
+
+  const farmerSteps = [
+    { title: 'Welcome', icon: <User className="w-6 h-6" /> },
+    { title: 'Personal', icon: <Phone className="w-6 h-6" /> },
+    { title: 'Home', icon: <MapPin className="w-6 h-6" /> },
+    { title: 'Farm Settings', icon: <Sprout className="w-6 h-6" /> },
+    { title: 'Specialties', icon: <Heart className="w-6 h-6" /> },
+    { title: 'Finalize', icon: <CheckCircle className="w-6 h-6" /> }
+  ];
+
+  const steps = isFarmer ? farmerSteps : buyerSteps;
 
   return (
     <Modal
@@ -146,11 +238,15 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
                 Mabuhay, {userName}! 🌱
               </h2>
               <p className="text-gray-600 text-lg max-w-md mx-auto">
-                Welcome to AgriLink. We're excited to have you join our community connecting local buyers and farmers.
+                {isFarmer 
+                  ? "Welcome to the AgriLink Merchant Portal. Let's get your farm profile ready so you can start listing your products."
+                  : "Welcome to AgriLink. We're excited to have you join our community connecting local buyers and farmers."}
               </p>
               <div className="bg-[#F9FBE7] p-6 rounded-3xl border border-green-100">
                 <p className="text-green-600 font-bold">
-                  Let's take 2 minutes to set up your profile so you can start shopping for fresh, sustainable produce.
+                  {isFarmer
+                    ? "Let's take 3 minutes to set up your producer profile and farm location."
+                    : "Let's take 2 minutes to set up your profile so you can start shopping for fresh, sustainable produce."}
                 </p>
               </div>
             </div>
@@ -159,8 +255,12 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
           {step === 2 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="mb-8">
-                <h2 className="text-2xl font-black text-gray-900">Contact Information</h2>
-                <p className="text-gray-500">How can farmers and delivery partners reach you?</p>
+                <h2 className="text-2xl font-black text-gray-900">
+                  {isFarmer ? "Personal Contact Details" : "Contact Information"}
+                </h2>
+                <p className="text-gray-500">
+                  {isFarmer ? "Provide your personal contact info and home location base." : "How can farmers and delivery partners reach you?"}
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -214,8 +314,12 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
           {step === 3 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="mb-4">
-                <h2 className="text-2xl font-black text-gray-900">Delivery Address & Pin</h2>
-                <p className="text-gray-500">Pin your location for accurate delivery coordination.</p>
+                <h2 className="text-2xl font-black text-gray-900">
+                  {isFarmer ? "Home Base Location" : "Delivery Address & Pin"}
+                </h2>
+                <p className="text-gray-500">
+                  {isFarmer ? "Where are you personally based?" : "Pin your location for accurate delivery coordination."}
+                </p>
               </div>
 
               <div className="space-y-4">
@@ -259,11 +363,119 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
             </div>
           )}
 
-          {step === 4 && (
+          {isFarmer && step === 4 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+              <div className="mb-4">
+                <h2 className="text-2xl font-black text-gray-900">Farm Setup</h2>
+                <p className="text-gray-500">Tell us where your farm is located.</p>
+              </div>
+
+              <div className="space-y-6">
+                <label className="flex items-center gap-4 p-4 bg-green-50 rounded-2xl border-2 border-green-100 cursor-pointer transition-all hover:bg-green-100/50 group">
+                  <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                    formData.farm_address_same_as_home ? 'bg-green-600 border-green-600' : 'bg-white border-gray-300'
+                  }`}>
+                    {formData.farm_address_same_as_home && <CheckCircle className="w-4 h-4 text-white" />}
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="hidden"
+                    checked={formData.farm_address_same_as_home}
+                    onChange={(e) => setFormData({ ...formData, farm_address_same_as_home: e.target.checked })}
+                  />
+                  <span className="font-black text-xs uppercase tracking-widest text-[#5ba409]">Farm is at the same location as my home</span>
+                </label>
+
+                {!formData.farm_address_same_as_home && (
+                  <div className="space-y-6 animate-in slide-in-from-top-4 duration-500">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Farm City</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Minglanilla"
+                          className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-xl outline-none font-bold transition-all text-sm"
+                          value={formData.farm_city}
+                          onChange={(e) => setFormData({ ...formData, farm_city: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Farm Province</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Cebu"
+                          className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-xl outline-none font-bold transition-all text-sm"
+                          value={formData.farm_province}
+                          onChange={(e) => setFormData({ ...formData, farm_province: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <MapPin className="absolute left-4 top-4 text-gray-400 w-5 h-5" />
+                      <textarea
+                        placeholder="Farm Street Address"
+                        rows={2}
+                        className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-2xl outline-none font-bold transition-all resize-none text-sm"
+                        value={formData.farm_address}
+                        onChange={(e) => setFormData({ ...formData, farm_address: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="w-full h-[200px] rounded-3xl overflow-hidden border-2 border-gray-100 relative group">
+                      <MapBoxMap
+                        {...farmViewState}
+                        onMove={evt => setFarmViewState(evt.viewState)}
+                        mapStyle={mapStyle}
+                        mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN || ''}
+                        style={{width: '100%', height: '100%'}}
+                        onClick={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            farm_latitude: e.lngLat.lat,
+                            farm_longitude: e.lngLat.lng,
+                          }));
+                        }}
+                      >
+                        <Marker longitude={formData.farm_longitude} latitude={formData.farm_latitude} anchor="bottom">
+                          <div className="text-orange-600 drop-shadow-lg">
+                            <MapPin className="w-8 h-8 fill-white" />
+                          </div>
+                        </Marker>
+                      </MapBoxMap>
+                      <div className="absolute top-4 left-4 right-4 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg text-[10px] font-black text-orange-600 uppercase tracking-widest border border-orange-100 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span>Click to set Farm Location</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {formData.farm_address_same_as_home && (
+                  <div className="p-8 bg-green-50/50 border-2 border-dashed border-green-200 rounded-3xl flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center">
+                      <MapPin className="w-8 h-8 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-black text-gray-900 uppercase italic tracking-tighter">Using Home Location</p>
+                      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest leading-relaxed mt-1">
+                        Your farm coordinates will mirror your home base pin.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {((!isFarmer && step === 4) || (isFarmer && step === 5)) && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="mb-8">
-                <h2 className="text-2xl font-black text-gray-900">I'm interested in...</h2>
-                <p className="text-gray-500">Select at least 3 categories for personalized recommendations.</p>
+                <h2 className="text-2xl font-black text-gray-900">
+                  {isFarmer ? "I specialize in..." : "I'm interested in..."}
+                </h2>
+                <p className="text-gray-500">
+                  {isFarmer ? "Select the primary categories of crops you produce." : "Select at least 3 categories for personalized recommendations."}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -299,11 +511,11 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
             </div>
           )}
 
-          {step === 5 && (
+          {((!isFarmer && step === 5) || (isFarmer && step === 6)) && (
             <div className="text-center space-y-8 animate-in fade-in zoom-in-95 duration-500">
               <div className="relative inline-block">
                 <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                  <ShoppingBag className="w-12 h-12 text-[#5ba409]" />
+                  {isFarmer ? <Sprout className="w-12 h-12 text-[#5ba409]" /> : <ShoppingBag className="w-12 h-12 text-[#5ba409]" />}
                 </div>
                 <div className="absolute -top-2 -right-2 bg-yellow-400 text-white p-2 rounded-full shadow-lg animate-bounce">
                   <StarIcon className="w-6 h-6 fill-white" />
@@ -313,7 +525,9 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
               <div>
                 <h2 className="text-3xl font-black text-gray-900 mb-2">You're All Set!</h2>
                 <p className="text-gray-600 text-lg">
-                  Everything is ready. You can now explore the marketplace and support our local farmers.
+                  {isFarmer 
+                    ? "Your farm profile is complete. You can now start listing your harvests for buyers to see."
+                    : "Everything is ready. You can now explore the marketplace and support our local farmers."}
                 </p>
               </div>
 
@@ -321,7 +535,9 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
                 <div className="absolute top-0 right-0 p-4 opacity-10">
                   <Sprout className="w-24 h-24" />
                 </div>
-                <h3 className="text-[#5ba409] font-black uppercase tracking-widest text-xs mb-4">Profile Summary</h3>
+                <h3 className="text-[#5ba409] font-black uppercase tracking-widest text-xs mb-4">
+                  {isFarmer ? "Merchant Passport" : "Profile Summary"}
+                </h3>
                 <div className="space-y-3 text-left">
                   <div className="flex items-center gap-3 text-gray-700">
                     <Phone className="w-5 h-5 text-gray-400" />
@@ -329,7 +545,11 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
                   </div>
                   <div className="flex items-center gap-3 text-gray-700">
                     <MapPin className="w-5 h-5 text-gray-400" />
-                    <span className="font-bold truncate">{formData.address || 'Address not pinned'}</span>
+                    <span className="font-bold truncate">
+                      {isFarmer 
+                        ? (formData.farm_address_same_as_home ? 'Farm at Home Base' : formData.farm_address)
+                        : (formData.address || 'Address not pinned')}
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-4">
                     {formData.interests.map(i => (
@@ -346,7 +566,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
 
         {/* Footer Actions */}
         <div className="flex gap-4 mt-12 bg-gray-50/50 p-2 rounded-[2rem] border border-gray-100 backdrop-blur-sm">
-          {step > 1 && step < 5 && (
+          {step > 1 && step < steps.length && (
             <button
               onClick={handleBack}
               disabled={loading}
@@ -356,7 +576,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
             </button>
           )}
           
-          {step < 5 ? (
+          {step < steps.length ? (
             <button
               onClick={handleNext}
               className="flex-2 py-4 bg-gray-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl hover:bg-black hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
@@ -371,8 +591,8 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
                 loading ? 'opacity-70 cursor-wait' : ''
               }`}
             >
-              {loading ? 'Setting things up...' : 'Enter Marketplace'} 
-              {!loading && <ShoppingBag className="w-4 h-4" />}
+              {loading ? 'Setting things up...' : (isFarmer ? 'Go to Farmer Dashboard' : 'Enter Marketplace')} 
+              {!loading && (isFarmer ? <Sprout className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />)}
             </button>
           )}
         </div>

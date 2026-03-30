@@ -61,6 +61,11 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
     province: '',
     zipCode: '',
     userType: userType as any,
+    farmAddress: '',
+    farmCity: '',
+    farmProvince: '',
+    farmZipCode: '',
+    farmAddressSameAsHome: true,
   });
 
   const [viewState, setViewState] = useState({
@@ -103,6 +108,13 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
           userType: userData.role,
           profileImage: userData.profile_image || userData.image_path || '/mongg.jpg',
           bio: userData.bio || 'Passionate about sustainable agriculture and community-driven food systems.',
+          farmAddress: userData.farm_address || '',
+          farmCity: userData.farm_city || '',
+          farmProvince: userData.farm_province || '',
+          farmZipCode: userData.farm_zip_code || '',
+          farmLatitude: userData.farm_latitude ? parseFloat(userData.farm_latitude) : undefined,
+          farmLongitude: userData.farm_longitude ? parseFloat(userData.farm_longitude) : undefined,
+          farmAddressSameAsHome: userData.farm_address_same_as_home === 1 || userData.farm_address_same_as_home === true,
         });
 
         if (ordersRes && ordersRes.ok) {
@@ -130,6 +142,87 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
     }
   }, [targetUserId, isNewUser]);
 
+  const handleSaveSetup = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${targetUserId}/onboarding`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: profile.phone,
+          address: profile.address,
+          city: profile.city,
+          province: profile.province,
+          zip_code: profile.zipCode,
+          latitude: profile.latitude,
+          longitude: profile.longitude,
+          farm_address: profile.farmAddress,
+          farm_city: profile.farmCity,
+          farm_province: profile.farmProvince,
+          farm_zip_code: profile.farmZipCode,
+          farm_latitude: profile.farmLatitude,
+          farm_longitude: profile.farmLongitude,
+          farm_address_same_as_home: profile.farmAddressSameAsHome
+        })
+      });
+
+      if (response.ok) {
+        localStorage.setItem('agrilink_onboarding_completed', '1');
+        // Dispatch custom event to notify App.tsx
+        window.dispatchEvent(new CustomEvent('agrilink-onboarding-completed'));
+        
+        setShowSetupModal(false);
+        navigate(profile.userType === 'farmer' ? '/farmer/dashboard' : '/marketplace');
+        toast.success('Profile setup complete!');
+      } else {
+        toast.error('Failed to save profile setup');
+      }
+    } catch (err) {
+      console.error('Setup error:', err);
+      toast.error('Something went wrong. Please try again.');
+    }
+  };
+
+  // 🌍 Auto-Geocode Address for Setup Modal
+  useEffect(() => {
+    if (!showSetupModal || !profile.address || profile.address.length < 5) return;
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const query = encodeURIComponent(`${profile.address}, ${profile.city}, ${profile.province}, Philippines`);
+        const token = import.meta.env.VITE_MAPBOX_TOKEN;
+        
+        if (!token) return;
+
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${token}&limit=1&country=ph`
+        );
+        
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          const [lng, lat] = data.features[0].center;
+          
+          setProfile(prev => ({
+            ...prev,
+            latitude: lat,
+            longitude: lng
+          }));
+          
+          setViewState(prev => ({
+            ...prev,
+            latitude: lat,
+            longitude: lng,
+            zoom: 15
+          }));
+        }
+      } catch (error) {
+        console.error('Geocoding error:', error);
+      }
+    }, 1500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [profile.address, profile.city, profile.province, showSetupModal]);
+
 
   // If reading only, override type to farmer (for demo purposes)
   const effectiveUserType = isReadOnly ? 'farmer' : userType;
@@ -139,10 +232,45 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
     setProfile(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // In a real app, this would be an API call
-    alert('Profile updated successfully! 🌿');
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem('agrilink_token');
+      const response = await fetch(`${API_BASE_URL}/users/${profile.id}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          first_name: profile.firstName,
+          last_name: profile.lastName,
+          phone: profile.phone,
+          address: profile.address,
+          city: profile.city,
+          province: profile.province,
+          zip_code: profile.zipCode,
+          latitude: profile.latitude,
+          longitude: profile.longitude,
+          farm_address: profile.farmAddress,
+          farm_city: profile.farmCity,
+          farm_province: profile.farmProvince,
+          farm_zip_code: profile.farmZipCode,
+          farm_latitude: profile.farmLatitude,
+          farm_longitude: profile.farmLongitude,
+          farm_address_same_as_home: profile.farmAddressSameAsHome,
+        }),
+      });
+
+      if (response.ok) {
+        setIsEditing(false);
+        alert('Profile updated successfully! 🌿');
+      } else {
+        alert('Failed to update profile. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      alert('An error occurred while saving. Please try again.');
+    }
   };
 
   const renderDashboardContent = () => {
@@ -569,7 +697,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
             <div className="pt-4 border-t border-gray-100">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
                 <MapPin className="w-5 h-5 mr-2 text-[#5ba409]" />
-                Address Information
+                Home Address
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2 space-y-2">
@@ -607,6 +735,100 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
                 </div>
               </div>
             </div>
+
+            {/* Farm Address Section - Only for farmers */}
+            {profile.userType === 'farmer' && (
+              <div className="pt-4 border-t border-gray-100">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                  <Sprout className="w-5 h-5 mr-2 text-[#5ba409]" />
+                  Farm Address
+                </h3>
+
+                {/* Same as home toggle */}
+                <label className="flex items-center gap-3 mb-6 cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={profile.farmAddressSameAsHome}
+                      onChange={(e) => setProfile({ ...profile, farmAddressSameAsHome: e.target.checked })}
+                      disabled={!isEditing}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-[#5ba409] transition-colors peer-disabled:opacity-50" />
+                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5 shadow-sm" />
+                  </div>
+                  <span className="text-sm font-bold text-gray-700 group-hover:text-gray-900 transition-colors">
+                    Same as home address
+                  </span>
+                </label>
+
+                {/* Show farm address fields only when NOT same as home */}
+                {!profile.farmAddressSameAsHome && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="text-sm font-bold text-gray-700">Farm Street Address</label>
+                      <input
+                        type="text"
+                        name="farmAddress"
+                        value={profile.farmAddress || ''}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        placeholder="Enter farm location address"
+                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700">Farm City</label>
+                      <input
+                        type="text"
+                        name="farmCity"
+                        value={profile.farmCity || ''}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        placeholder="City / Municipality"
+                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700">Farm Province</label>
+                      <input
+                        type="text"
+                        name="farmProvince"
+                        value={profile.farmProvince || ''}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        placeholder="Province"
+                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700">Farm Zip Code</label>
+                      <input
+                        type="text"
+                        name="farmZipCode"
+                        value={profile.farmZipCode || ''}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        placeholder="Zip Code"
+                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {profile.farmAddressSameAsHome && (
+                  <div className="bg-green-50 rounded-2xl p-4 border border-green-100 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#5ba409]/10 rounded-xl flex items-center justify-center shrink-0">
+                      <MapPin className="w-5 h-5 text-[#5ba409]" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-green-900">Farm is at your home address</p>
+                      <p className="text-xs text-green-700">{profile.address}{profile.city ? `, ${profile.city}` : ''}{profile.province ? `, ${profile.province}` : ''}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
       case 'security':
@@ -1041,99 +1263,214 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
         isOpen={showSetupModal}
         onClose={() => setShowSetupModal(false)}
         title="Welcome to AgriLink! 🌱"
+        size="2xl"
       >
         <div className="space-y-6">
           <div className="bg-green-50 p-6 rounded-3xl border border-green-100 mb-6">
             <h3 className="text-xl font-black text-green-900 mb-2">Almost there!</h3>
             <p className="text-green-800/70 text-sm font-medium">
-              To start buying fresh produce, we just need a few more details to help with delivery and coordination.
+              {profile.userType === 'farmer'
+                ? "Let's set up your merchant profile so you can start selling your harvests."
+                : "To start buying fresh produce, we just need a few more details to help with delivery and coordination."}
             </p>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Mobile Number</label>
+          <div className="space-y-6 overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
+            {/* Common: Mobile Number */}
+            <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm transition-all hover:border-green-100">
+              <label className="block text-xs font-black text-[#5ba409] uppercase tracking-widest mb-3">Mobile Number</label>
               <div className="relative">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="tel"
                   placeholder="+63 9XX XXX XXXX"
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-2xl outline-none font-bold transition-all"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-green-600 rounded-2xl outline-none font-bold transition-all text-sm"
                   value={profile.phone}
                   onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Delivery Address</label>
-              <div className="relative">
+            {/* Home/Delivery Address Section */}
+            <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm transition-all hover:border-green-100">
+              <label className="block text-xs font-black text-green-600 uppercase tracking-widest mb-3">
+                {profile.userType === 'farmer' ? "Home Address" : "Delivery Address"}
+              </label>
+              <div className="relative mb-4">
                 <MapPin className="absolute left-4 top-4 text-gray-400 w-5 h-5" />
                 <textarea
                   placeholder="Street Name, Barangay, City, Province"
                   rows={2}
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-2xl outline-none font-bold transition-all resize-none mb-3"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-2xl outline-none font-bold transition-all resize-none text-sm"
                   value={profile.address}
                   onChange={(e) => setProfile({ ...profile, address: e.target.value })}
                 />
               </div>
-              
-              <div className="mt-2 w-full h-[200px] border-2 border-green-100 rounded-xl overflow-hidden relative">
-                  {!import.meta.env.VITE_MAPBOX_TOKEN && (
-                    <div className="absolute inset-0 z-40 bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 text-center">
-                      <p className="text-red-600 font-bold text-sm">Mapbox Token Missing</p>
-                    </div>
+
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <input
+                  placeholder="City"
+                  className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-xl outline-none font-bold text-xs"
+                  value={profile.city}
+                  onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                />
+                <input
+                  placeholder="Province"
+                  className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-xl outline-none font-bold text-xs"
+                  value={profile.province}
+                  onChange={(e) => setProfile({ ...profile, province: e.target.value })}
+                />
+                <input
+                  placeholder="ZIP"
+                  className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-xl outline-none font-bold text-xs"
+                  value={profile.zipCode}
+                  onChange={(e) => setProfile({ ...profile, zipCode: e.target.value })}
+                />
+              </div>
+
+              {/* Home Map (only if buyer or if farmer and wants to pin home) */}
+              <div className="w-full h-[200px] border-2 border-green-100 rounded-2xl overflow-hidden relative shadow-inner">
+                <MapBoxMap
+                  {...viewState}
+                  onMove={evt => setViewState(evt.viewState)}
+                  mapStyle={customMapStyle as any}
+                  mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN || ''}
+                  style={{width: '100%', height: '100%'}}
+                  onClick={(e) => {
+                    setProfile(prev => ({
+                      ...prev,
+                      latitude: e.lngLat.lat,
+                      longitude: e.lngLat.lng,
+                      ...(prev.farmAddressSameAsHome ? { farmLatitude: e.lngLat.lat, farmLongitude: e.lngLat.lng } : {})
+                    }));
+                  }}
+                >
+                  {profile.latitude && profile.longitude && (
+                    <Marker longitude={profile.longitude} latitude={profile.latitude} anchor="bottom">
+                      <div className="text-[#5ba409] drop-shadow-lg">
+                        <MapPin className="w-8 h-8 fill-white" />
+                      </div>
+                    </Marker>
                   )}
-                  <MapBoxMap
-                    {...viewState}
-                    onMove={evt => setViewState(evt.viewState)}
-                    mapStyle={customMapStyle as any}
-                    mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN || ''}
-                    style={{width: '100%', height: '100%'}}
-                    onClick={(e) => {
-                      setProfile({
-                        ...profile,
-                        latitude: e.lngLat.lat,
-                        longitude: e.lngLat.lng,
-                      });
-                    }}
-                  >
-                    {profile.latitude && profile.longitude && (
-                      <Marker 
-                        longitude={profile.longitude} 
-                        latitude={profile.latitude}
-                        anchor="bottom"
-                      >
-                        <div className="text-[#5ba409] cursor-pointer drop-shadow-md">
-                          <MapPin className="w-8 h-8 fill-white" />
-                        </div>
-                      </Marker>
-                    )}
-                  </MapBoxMap>
-                  <div className="absolute bottom-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
-                    <div className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-lg text-[10px] font-bold text-[#5ba409] border border-green-100 pointer-events-auto">
-                      Click anywhere on map to drop a pin
-                    </div>
+                </MapBoxMap>
+                <div className="absolute top-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
+                  <div className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-lg text-[9px] font-black text-[#5ba409] uppercase tracking-widest border border-green-100 pointer-events-auto">
+                    Pin Home Location
                   </div>
                 </div>
+              </div>
             </div>
+
+            {/* Farm Section for Farmers */}
+            {(profile.role === 'farmer' || profile.userType === 'farmer') && (
+              <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm transition-all hover:border-orange-100 animate-in slide-in-from-top-4 duration-500">
+                <div className="flex items-center justify-between mb-4">
+                  <label className="block text-xs font-black text-orange-600 uppercase tracking-widest">Farm Location</label>
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <div className={`w-10 h-6 rounded-full p-1 transition-all duration-300 ${profile.farmAddressSameAsHome ? 'bg-green-600' : 'bg-gray-200'}`}>
+                      <div className={`w-4 h-4 bg-white rounded-full shadow-md transition-all duration-300 transform ${profile.farmAddressSameAsHome ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </div>
+                    <input 
+                      type="checkbox" 
+                      className="hidden" 
+                      checked={profile.farmAddressSameAsHome}
+                      onChange={(e) => setProfile({ ...profile, farmAddressSameAsHome: e.target.checked })}
+                    />
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-gray-600">Same as home</span>
+                  </label>
+                </div>
+
+                {!profile.farmAddressSameAsHome && (
+                  <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                    <div className="relative">
+                      <Sprout className="absolute left-4 top-4 text-orange-400 w-5 h-5" />
+                      <textarea
+                        placeholder="Farm Street Address"
+                        rows={2}
+                        className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-2xl outline-none font-bold transition-all resize-none text-sm"
+                        value={profile.farmAddress}
+                        onChange={(e) => setProfile({ ...profile, farmAddress: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input
+                        placeholder="City"
+                        className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-xl outline-none font-bold text-xs"
+                        value={profile.farmCity}
+                        onChange={(e) => setProfile({ ...profile, farmCity: e.target.value })}
+                      />
+                      <input
+                        placeholder="Province"
+                        className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-xl outline-none font-bold text-xs"
+                        value={profile.farmProvince}
+                        onChange={(e) => setProfile({ ...profile, farmProvince: e.target.value })}
+                      />
+                      <input
+                        placeholder="ZIP"
+                        className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-xl outline-none font-bold text-xs"
+                        value={profile.farmZipCode}
+                        onChange={(e) => setProfile({ ...profile, farmZipCode: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {profile.farmAddressSameAsHome ? (
+                  <div className="p-4 bg-orange-50 border-2 border-dashed border-orange-100 rounded-2xl flex flex-col items-center justify-center text-center space-y-2 opacity-80">
+                    <div className="p-2 bg-orange-100 rounded-xl">
+                      <MapPin className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <p className="text-[10px] font-black text-orange-800 uppercase tracking-widest">Using Home Coordinates</p>
+                  </div>
+                ) : (
+                  <div className="h-[200px] border-2 border-orange-100 rounded-2xl overflow-hidden relative shadow-inner mt-4">
+                    <MapBoxMap
+                      longitude={profile.farmLongitude || profile.longitude || 123.8854}
+                      latitude={profile.farmLatitude || profile.latitude || 10.3157}
+                      zoom={14}
+                      mapStyle={customMapStyle as any}
+                      mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN || ''}
+                      style={{width: '100%', height: '100%'}}
+                      onClick={(e) => {
+                        setProfile({
+                          ...profile,
+                          farmLatitude: e.lngLat.lat,
+                          farmLongitude: e.lngLat.lng,
+                        });
+                      }}
+                    >
+                      {profile.farmLatitude && profile.farmLongitude && (
+                        <Marker longitude={profile.farmLongitude} latitude={profile.farmLatitude} anchor="bottom">
+                          <div className="text-orange-600 drop-shadow-lg">
+                            <MapPin className="w-8 h-8 fill-white" />
+                          </div>
+                        </Marker>
+                      )}
+                    </MapBoxMap>
+                    <div className="absolute top-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
+                      <div className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-lg text-[9px] font-black text-orange-600 uppercase tracking-widest border border-orange-100 pointer-events-auto">
+                        Pin Farm Location
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-4 pt-4">
             <button
               onClick={() => setShowSetupModal(false)}
-              className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-gray-200 transition-all"
+              className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-gray-200 transition-all shadow-sm"
             >
               Skip for now
             </button>
             <button
-              onClick={() => {
-                setShowSetupModal(false);
-                navigate('/marketplace');
-              }}
-              className="flex-[2] py-4 bg-[#5ba409] text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-green-500/30 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+              onClick={handleSaveSetup}
+              className="flex-[2] py-4 bg-green-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-green-500/30 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
             >
-              Start Shopping <ArrowRight className="w-4 h-4" />
+              {profile.userType === 'farmer' ? "Start Selling" : "Start Shopping"}
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>

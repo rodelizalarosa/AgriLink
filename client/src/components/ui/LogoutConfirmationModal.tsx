@@ -13,15 +13,9 @@ const LogoutConfirmationModal: React.FC<LogoutConfirmationModalProps> = ({ isOpe
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={
-                <div className="flex items-center gap-3 text-red-600">
-                    <LogOut className="w-5 h-5" />
-                    <span>Session Termination</span>
-                </div>
-            }
             maxWidth="max-w-md"
         >
-            <div className="space-y-8 py-4">
+            <div className="space-y-6">
                 {/* ⚠️ Alert Section */}
                 <div className="flex flex-col items-center text-center space-y-4">
                     <div className="w-20 h-20 bg-red-50 rounded-[2rem] flex items-center justify-center text-red-500 shadow-inner">
@@ -30,7 +24,7 @@ const LogoutConfirmationModal: React.FC<LogoutConfirmationModalProps> = ({ isOpe
                     <div>
                         <h3 className="text-2xl font-black text-gray-900 tracking-tight italic uppercase">Are you sure?</h3>
                         <p className="text-sm font-medium text-gray-400 mt-2 max-w-[280px]">
-                            You're about to end your current session. You'll need to re-authenticate to manage your harvests.
+                            You're about to log out.
                         </p>
                     </div>
                 </div>

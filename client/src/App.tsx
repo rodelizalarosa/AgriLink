@@ -131,12 +131,10 @@ const AppContent: React.FC = () => {
     document.title = currentTitle;
   }, [location]);
 
-
   const sidebarVisibleRoles = ['farmer', 'admin', 'brgy_official'];
   const showSidebar = isLoggedIn && sidebarVisibleRoles.includes(userType.toLowerCase()) && SIDEBAR_ROUTES.includes(location.pathname);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('agrilink_user');
     const savedRole = localStorage.getItem('agrilink_role');
     const savedLoggedIn = localStorage.getItem('agrilink_isLoggedIn');
 
@@ -147,10 +145,20 @@ const AppContent: React.FC = () => {
       setIsLoggedIn(true);
       const onboardingStatus = localStorage.getItem('agrilink_onboarding_completed');
       setOnboardingCompleted(onboardingStatus === '1');
-      if (savedRole.toLowerCase() === 'buyer' && onboardingStatus !== '1') {
+      if ((savedRole.toLowerCase() === 'buyer' || savedRole.toLowerCase() === 'farmer') && onboardingStatus !== '1') {
         setShowOnboarding(true);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    const handleCompletion = () => {
+      setOnboardingCompleted(true);
+      setShowOnboarding(false);
+    };
+
+    window.addEventListener('agrilink-onboarding-completed', handleCompletion);
+    return () => window.removeEventListener('agrilink-onboarding-completed', handleCompletion);
   }, []);
 
   const handleLogin = (role: string, userData?: any, token?: string) => {
@@ -173,7 +181,7 @@ const AppContent: React.FC = () => {
       setOnboardingCompleted(onboardingStatus);
       localStorage.setItem('agrilink_onboarding_completed', onboardingStatus ? '1' : '0');
       
-      if (sanitizedRole === 'buyer' && !onboardingStatus) {
+      if ((sanitizedRole === 'buyer' || sanitizedRole === 'farmer') && !onboardingStatus) {
         setShowOnboarding(true);
       }
     }
@@ -238,6 +246,7 @@ const AppContent: React.FC = () => {
           onClose={() => setShowOnboarding(false)}
           userId={localStorage.getItem('agrilink_id') || ''}
           userName={firstName}
+          userType={userType}
           onComplete={() => setOnboardingCompleted(true)}
         />
       )}
