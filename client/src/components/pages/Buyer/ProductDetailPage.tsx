@@ -1,576 +1,559 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft,
-  ShoppingCart,
-  Zap,
-  ShieldCheck,
-  MapPin,
-  Star,
-  Heart,
-  Share2,
-  Plus,
-  Minus,
-  Truck,
-  Leaf,
-  Clock,
-  Package,
-  User,
-  MessageSquare,
+  CheckCircle2,
   ChevronRight,
-  CheckCircle,
-  BadgeCheck,
-  ExternalLink
+  MapPin,
+  MessageSquare,
+  Minus,
+  Package,
+  Plus,
+  ShoppingCart,
+  Star,
+  User,
 } from 'lucide-react';
-import { sampleProducts } from '../../../data';
-import type { Product } from '../../../types';
-
-const MOCK_REVIEWS = [
-  { name: 'Maria S.',    avatar: 'MS', rating: 5, date: 'Feb 28, 2026', text: 'Super fresh! Delivered ahead of schedule. Will order again next week.' },
-  { name: 'Pedro R.',   avatar: 'PR', rating: 5, date: 'Feb 26, 2026', text: 'Best quality produce I have found in AgriLink. The tomatoes were perfectly ripe.' },
-  { name: 'Ana G.',     avatar: 'AG', rating: 4, date: 'Feb 24, 2026', text: 'Good quantity for the price. Packaging could be improved but the product itself is excellent.' },
-];
-
-import { API_BASE_URL } from '../../../api/apiConfig';
+import type { Product, ProductReview } from '../../../types';
+import { API_BASE_URL, getFullImageUrl } from '../../../api/apiConfig';
 import * as cartService from '../../../services/cartService';
+import { useToast } from '../../ui/Toast';
+
+type ProductRecord = {
+  p_id?: number;
+  p_name?: string;
+  p_description?: string;
+  p_price?: number | string;
+  p_quantity?: number | string;
+  p_unit?: string;
+  p_image?: string;
+  cat_name?: string;
+  city?: string;
+  first_name?: string;
+  last_name?: string;
+  u_id?: number | string;
+  user_id?: number | string;
+  farmer_id?: number | string;
+  sellerAvgRating?: number | string;
+  sellerReviewCount?: number | string;
+};
+
+type FarmerProfile = {
+  id?: number;
+  first_name?: string;
+  last_name?: string;
+  city?: string;
+  farm_city?: string;
+  farm_name?: string;
+  farm_address?: string;
+  address?: string;
+};
+
+const toNumber = (value: unknown, fallback = 0): number => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const asText = (value: unknown, fallback = ''): string => {
+  const out = String(value ?? '').trim();
+  return out || fallback;
+};
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [product, setProduct] = useState<Product | null>(null);
+  const { success: showSuccess, error: showError, info: showInfo } = useToast();
+
+  const [product, setProduct] = useState<ProductRecord | null>(null);
+  const [farmerProfile, setFarmerProfile] = useState<FarmerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
-  const [wishlisted, setWishlisted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'reviews' | 'seller'>('details');
-  const [cartSuccess, setCartSuccess] = useState(false);
-  const [related, setRelated] = useState<Product[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'farmer'>('overview');
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [newRating, setNewRating] = useState(5);
 
-  React.useEffect(() => {
-    const fetchProduct = async () => {
+  const token = localStorage.getItem('agrilink_token');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchProductData = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/products/${id}`);
-        if (!res.ok) throw new Error('Product not found');
-        const data = await res.json();
-        
-        const p = data.product;
-        const mappedProduct: Product = {
-          id: p.p_id,
-          name: p.p_name,
-          price: parseFloat(p.p_price),
-          unit: p.p_unit,
-          seller: `${p.first_name} ${p.last_name}`,
-          location: p.city || 'Local Farm',
-          stock: parseFloat(p.p_quantity),
-          image: p.p_image || '🌱',
-          category: p.cat_name || 'Others',
-          badges: p.p_status === 'active' ? ['Direct Source'] : []
-        };
-        setProduct(mappedProduct);
-        
-        // Fetch related products (mock for now from the same category)
-        const allRes = await fetch(`${API_BASE_URL}/products`);
-        const allData = await allRes.json();
-        if (allData.products) {
-          const filtered = allData.products
-            .filter((item: any) => item.cat_name === p.cat_name && item.p_id !== p.p_id)
-            .slice(0, 3)
-            .map((item: any) => ({
-              id: item.p_id,
-              name: item.p_name,
-              price: parseFloat(item.p_price),
-              unit: item.p_unit,
-              seller: `${item.first_name} ${item.last_name}`,
-              location: item.city || 'Local Farm',
-              stock: parseFloat(item.p_quantity),
-              image: item.p_image || '🌱',
-              category: item.cat_name || 'Others'
-            }));
-          setRelated(filtered);
+        setLoading(true);
+
+        const productRes = await fetch(`${API_BASE_URL}/products/${id}`);
+        if (!productRes.ok) throw new Error('Product not found');
+
+        const productData = (await productRes.json()) as { product?: ProductRecord };
+        const nextProduct = productData.product ?? null;
+        if (!cancelled) setProduct(nextProduct);
+
+        const farmerId = toNumber(nextProduct?.u_id ?? nextProduct?.user_id ?? nextProduct?.farmer_id);
+        if (farmerId > 0) {
+          const farmerRes = await fetch(`${API_BASE_URL}/users/${farmerId}`);
+          if (!cancelled) {
+            if (farmerRes.ok) {
+              const profile = (await farmerRes.json()) as FarmerProfile;
+              setFarmerProfile(profile);
+            } else {
+              setFarmerProfile(null);
+            }
+          }
+        } else if (!cancelled) {
+          setFarmerProfile(null);
         }
-      } catch (err) {
-        console.error(err);
+
+        const reviewRes = await fetch(`${API_BASE_URL}/reviews/${id}`);
+        if (!cancelled) {
+          if (reviewRes.ok) {
+            const reviewData = (await reviewRes.json()) as { reviews?: ProductReview[] };
+            setReviews(Array.isArray(reviewData.reviews) ? reviewData.reviews : []);
+          } else {
+            setReviews([]);
+          }
+        }
+      } catch {
+        if (!cancelled) console.error('Unable to load product details.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
-    fetchProduct();
+    fetchProductData();
+    window.scrollTo(0, 0);
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
+  const averageRating = useMemo(() => {
+    if (reviews.length > 0) {
+      const sum = reviews.reduce((acc, r) => acc + toNumber(r.rating), 0);
+      return (sum / reviews.length).toFixed(1);
+    }
+    return toNumber(product?.sellerAvgRating, 0).toFixed(1);
+  }, [product?.sellerAvgRating, reviews]);
+
+  const reviewCount = useMemo(() => {
+    if (reviews.length > 0) return reviews.length;
+    return toNumber(product?.sellerReviewCount, 0);
+  }, [product?.sellerReviewCount, reviews]);
+
+  const ratingBreakdown = useMemo(
+    () => [5, 4, 3, 2, 1].map((s) => ({ stars: s, count: reviews.filter((r) => toNumber(r.rating) === s).length })),
+    [reviews]
+  );
+
+  const handleAddReview = async () => {
+    if (!token) {
+      showInfo('Sign in to submit a review.');
+      return;
+    }
+    if (!newComment.trim()) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productId: id,
+          rating: newRating,
+          comment: newComment.trim(),
+        }),
+      });
+
+      if (!res.ok) {
+        showError('Failed to submit review.');
+        return;
+      }
+
+      showSuccess('Review submitted.');
+      setNewComment('');
+      const reviewRes = await fetch(`${API_BASE_URL}/reviews/${id}`);
+      if (reviewRes.ok) {
+        const reviewData = (await reviewRes.json()) as { reviews?: ProductReview[] };
+        setReviews(Array.isArray(reviewData.reviews) ? reviewData.reviews : []);
+      }
+    } catch {
+      showError('Network error while submitting review.');
+    }
+  };
+
+  const handleChatFarmer = () => {
+    if (!token) {
+      showInfo('Please log in to message the farmer.');
+      navigate('/login');
+      return;
+    }
+
+    const farmerId = toNumber(product?.u_id ?? farmerProfile?.id);
+    const myId = toNumber(localStorage.getItem('agrilink_id'));
+
+    if (farmerId <= 0) {
+      showError('Farmer profile is unavailable.');
+      return;
+    }
+
+    if (myId > 0 && myId === farmerId) {
+      showInfo('This is your own listing.');
+      return;
+    }
+
+    const productName = asText(product?.p_name, 'your listing');
+    const farmerName = asText(
+      `${asText(farmerProfile?.first_name)} ${asText(farmerProfile?.last_name)}`,
+      asText(`${asText(product?.first_name)} ${asText(product?.last_name)}`, 'Farmer')
+    );
+
+    const starter = `Hi ${farmerName}, I'm interested in ${productName}. Is it still available?`;
+
+    const params = new URLSearchParams({
+      contactId: String(farmerId),
+      startConversation: '1',
+      productId: String(toNumber(product?.p_id)),
+      productName,
+      starter,
+    });
+
+    navigate(`/messages?${params.toString()}`);
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F9FBE7]">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-10 h-10 rounded-full border-2 border-slate-200 border-t-green-600 animate-spin" />
       </div>
     );
   }
 
-  if (!product) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FBE7] gap-6">
-        <div className="text-7xl">🌾</div>
-        <h2 className="text-3xl font-black text-gray-900">Product not found</h2>
-        <button
-          onClick={() => navigate('/marketplace')}
-          className="flex items-center gap-2 px-8 py-4 bg-green-600 text-white rounded-2xl font-black"
-        >
-          <ArrowLeft className="w-5 h-5" /> Back to Marketplace
-        </button>
-      </div>
-    );
-  }
+  if (!product) return null;
 
-  const total = product.price * qty;
-  const isLowStock = product.stock < 15;
+  const imageUrl = getFullImageUrl(product.p_image);
+  const name = asText(product.p_name, 'Unnamed Product');
+  const category = asText(product.cat_name, 'Uncategorized');
+  const price = toNumber(product.p_price, 0);
+  const unit = asText(product.p_unit, 'unit');
+  const stock = toNumber(product.p_quantity, 0);
+  const isOutOfStock = stock <= 0;
+  const location = asText(product.city, 'Location not provided');
 
-  const handleOrder = () => {
-    navigate(`/checkout/${product.id}?qty=${qty}`);
-  };
-
-  const handleCart = () => {
-    cartService.addToCart(product, qty);
-    setCartSuccess(true);
-    setTimeout(() => setCartSuccess(false), 2500);
-  };
+  const farmerName = asText(
+    `${asText(farmerProfile?.first_name)} ${asText(farmerProfile?.last_name)}`,
+    asText(`${asText(product.first_name)} ${asText(product.last_name)}`, 'Farmer')
+  );
+  const farmerCity = asText(farmerProfile?.farm_city ?? farmerProfile?.city, location);
+  const farmerId = toNumber(product.u_id ?? farmerProfile?.id);
+  const isOwnListing = toNumber(localStorage.getItem('agrilink_id')) === farmerId && farmerId > 0;
 
   return (
-    <div className="min-h-screen bg-[#F9FBE7]">
-
-      {/* ── Top Nav Strip ─────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate('/marketplace')}
-            className="flex items-center gap-2 text-gray-500 hover:text-green-600 font-black text-sm transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" /> Back to Marketplace
-          </button>
-          <div className="flex items-center gap-2 text-xs font-bold text-gray-400">
-            <span>Marketplace</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span>{product.category}</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-gray-900">{product.name}</span>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setWishlisted(w => !w)}
-              className={`p-3 rounded-2xl border transition-all font-black ${wishlisted ? 'bg-red-50 border-red-200 text-red-500' : 'bg-gray-50 border-gray-100 text-gray-400 hover:text-red-400'}`}
-            >
-              <Heart className={`w-5 h-5 ${wishlisted ? 'fill-current' : ''}`} />
-            </button>
-            <button className="p-3 rounded-2xl bg-gray-50 border border-gray-100 text-gray-400 hover:text-gray-700 transition-all">
-              <Share2 className="w-5 h-5" />
-            </button>
-          </div>
+    <div className="min-h-screen bg-slate-50 pb-20">
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="text-xs font-semibold text-slate-500 flex items-center gap-2 mb-4">
+          <button onClick={() => navigate('/buyer/marketplace')} className="hover:text-slate-700">Marketplace</button>
+          <ChevronRight size={14} />
+          <span>{category}</span>
+          <ChevronRight size={14} />
+          <span className="text-slate-700 truncate">{name}</span>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-12 space-y-16">
-        {/* ── Hero Section ──────────────────────────────────────── */}
-        <div className="grid lg:grid-cols-2 gap-14 items-start">
-
-          {/* Left — Image */}
-          <div className="space-y-4 sticky top-28">
-            <div className="relative rounded-[3rem] overflow-hidden h-[500px] bg-white shadow-2xl shadow-green-900/10 border border-gray-100 group">
-              {/* Badges */}
-              <div className="absolute top-6 left-6 z-10 flex flex-col gap-2">
-                {isLowStock && (
-                  <div className="bg-amber-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5">
-                    <Zap className="w-3 h-3 fill-current" /> Only {product.stock} left
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="grid lg:grid-cols-[420px_1fr]">
+            <div className="p-5 border-b lg:border-b-0 lg:border-r border-slate-100">
+              <div className="aspect-square rounded-xl border border-slate-100 bg-slate-50 overflow-hidden">
+                {imageUrl ? (
+                  <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-300">
+                    <Package size={56} />
                   </div>
                 )}
-                {product.badges?.map((badge, i) => (
-                  <div key={i} className="bg-white/90 backdrop-blur-md text-green-700 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border border-green-100 flex items-center gap-1.5">
-                    <ShieldCheck className="w-3 h-3" /> {badge}
+              </div>
+            </div>
+
+            <div className="p-6 lg:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 text-green-700 text-[11px] font-semibold mb-3">
+                    <CheckCircle2 size={13} /> {category}
+                  </p>
+                  <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 leading-tight">{name}</h1>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-5 text-sm text-slate-600">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-0.5 text-amber-500">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={14} className={i < Math.round(toNumber(averageRating)) ? 'fill-current' : ''} />
+                    ))}
                   </div>
-                ))}
-              </div>
-
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-              />
-
-              {/* Bottom overlay */}
-              <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/40 to-transparent" />
-              <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
-                <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-2xl text-white border border-white/10">
-                  <MapPin className="w-4 h-4 text-green-400" />
-                  <span className="text-sm font-black">{product.location}</span>
+                  <span className="font-semibold text-slate-800">{averageRating}</span>
+                  <span>({reviewCount} reviews)</span>
                 </div>
-                <div className="flex items-center gap-1.5 bg-white px-3 py-2 rounded-2xl shadow-lg">
-                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                  <span className="text-sm font-black text-gray-900">4.9</span>
-                  <span className="text-xs text-gray-400 font-bold">(48)</span>
+                <div className="flex items-center gap-1.5">
+                  <MapPin size={14} />
+                  <span>{location}</span>
                 </div>
               </div>
-            </div>
 
-            {/* Thumbnail strip — repeated product image for demo */}
-            <div className="flex gap-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className={`h-20 flex-1 rounded-2xl overflow-hidden cursor-pointer border-2 transition-all ${i === 0 ? 'border-green-500' : 'border-transparent hover:border-green-200'}`}>
-                  <img src={product.image} alt="" className="w-full h-full object-cover" />
+              <div className="mt-6 p-5 rounded-xl bg-slate-50 border border-slate-100">
+                <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Price</p>
+                <p className="mt-1 text-3xl font-bold text-slate-900">P {price.toLocaleString()}</p>
+                <p className="text-sm text-slate-500">per {unit}</p>
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center gap-6 text-sm">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Available</p>
+                  <p className="font-semibold text-slate-800">{stock.toLocaleString()} {unit}</p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right — Info */}
-          <div className="space-y-8">
-            {/* Category + Name */}
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1.5 rounded-full uppercase tracking-widest border border-green-100">
-                  {product.category}
-                </span>
-                {product.badges?.map((b, i) => (
-                  <span key={i} className="text-[10px] font-black text-purple-600 bg-purple-50 px-3 py-1.5 rounded-full uppercase tracking-widest border border-purple-100 flex items-center gap-1">
-                    <BadgeCheck className="w-3 h-3" /> {b}
-                  </span>
-                ))}
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Quantity</p>
+                  <div className="mt-1 inline-flex items-center rounded-lg border border-slate-200 overflow-hidden">
+                    <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-9 h-9 grid place-items-center text-slate-600 hover:bg-slate-50">
+                      <Minus size={14} />
+                    </button>
+                    <span className="w-11 text-center text-sm font-semibold">{qty}</span>
+                    <button onClick={() => setQty((q) => Math.min(stock || 1, q + 1))} className="w-9 h-9 grid place-items-center text-slate-600 hover:bg-slate-50">
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                </div>
               </div>
-              <h1 className="text-5xl font-black text-gray-900 tracking-tight leading-tight">{product.name}</h1>
-              <p className="text-gray-400 font-bold mt-2 italic">Farm-fresh, direct from {product.location}</p>
-            </div>
 
-            {/* Rating row */}
-            <div className="flex items-center gap-5">
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-amber-400 fill-amber-400" />
-                ))}
-              </div>
-              <span className="text-sm font-bold text-gray-500">4.9 · 48 reviews · 120+ orders</span>
-            </div>
-
-            {/* Price */}
-            <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-black text-gray-900 tracking-tighter">₱{product.price}</span>
-              <span className="text-xl font-bold text-gray-400">/ {product.unit}</span>
-            </div>
-
-            {/* Stock bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-black uppercase tracking-widest text-gray-400">
-                <span>Stock availability</span>
-                <span className={isLowStock ? 'text-amber-600' : 'text-green-600'}>{product.stock} {product.unit} left</span>
-              </div>
-              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-1000 ${isLowStock ? 'bg-amber-400' : 'bg-green-500'}`}
-                  style={{ width: `${Math.min(100, (product.stock / 100) * 100)}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Farmer chip */}
-            <div className="flex items-center gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/30">
-              <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 font-black text-xl">
-                {product.seller.charAt(0)}
-              </div>
-              <div className="flex-1">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Sold by</p>
-                <div 
-                  className="flex items-center gap-2 group/seller cursor-pointer w-fit"
-                  onClick={() => navigate(`/profile/farmer-${product.seller.replace(/\s+/g, '-').toLowerCase()}`)}
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button
+                  onClick={() => {
+                    const pObj: Product = {
+                      id: toNumber(product.p_id),
+                      name,
+                      price,
+                      unit,
+                      seller: farmerName,
+                      sellerUserId: farmerId > 0 ? farmerId : undefined,
+                      location,
+                      stock,
+                      image: imageUrl,
+                      category,
+                    };
+                    cartService.addToCart(pObj, qty);
+                    showSuccess(`${name} added to cart.`);
+                  }}
+                  disabled={isOutOfStock}
+                  className="h-11 px-5 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-semibold inline-flex items-center gap-2"
                 >
-                  <p className="text-lg font-black text-gray-900 group-hover/seller:text-green-600 transition-colors">{product.seller}</p>
-                  <ExternalLink className="w-4 h-4 text-gray-300 group-hover/seller:text-green-500 transition-colors" />
-                </div>
-                <p className="text-xs font-bold text-green-600 flex items-center gap-1 mt-0.5">
-                  <CheckCircle className="w-3.5 h-3.5" /> Verified Farmer · 98% positive reviews
-                </p>
+                  <ShoppingCart size={16} /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+                </button>
+
+                <button
+                  onClick={handleChatFarmer}
+                  disabled={isOwnListing}
+                  className="h-11 px-5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed text-slate-700 text-sm font-semibold inline-flex items-center gap-2"
+                >
+                  <MessageSquare size={16} /> {isOwnListing ? 'Your Listing' : 'Message Farmer'}
+                </button>
               </div>
-              <button
-                onClick={() => navigate('/messages')}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 hover:bg-green-50 rounded-2xl font-black text-xs text-gray-500 hover:text-green-600 border border-gray-100 hover:border-green-200 transition-all"
-              >
-                <MessageSquare className="w-4 h-4" /> Chat
-              </button>
-            </div>
-
-            {/* Quantity picker */}
-            <div className="space-y-3">
-              <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Quantity ({product.unit})</p>
-              <div className="flex items-center gap-5">
-                <div className="flex items-center bg-white border-2 border-gray-100 rounded-2xl overflow-hidden shadow-xl shadow-gray-200/30">
-                  <button
-                    onClick={() => setQty(q => Math.max(1, q - 1))}
-                    className="px-5 py-4 text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all font-black text-xl"
-                  >
-                    <Minus className="w-5 h-5" />
-                  </button>
-                  <span className="px-8 text-2xl font-black text-gray-900 min-w-[80px] text-center">{qty}</span>
-                  <button
-                    onClick={() => setQty(q => Math.min(product.stock, q + 1))}
-                    className="px-5 py-4 text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all font-black text-xl"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="bg-green-50 border border-green-100 px-6 py-4 rounded-2xl">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Subtotal</p>
-                  <p className="text-2xl font-black text-green-700 tracking-tighter">₱{total.toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* CTA Buttons */}
-            <div className="flex gap-4">
-              <button
-                onClick={handleOrder}
-                className="flex-2 py-6 border-2 border-green-600 bg-green-600 hover:bg-transparent text-white hover:text-green-600 rounded-4xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl shadow-green-600/20 hover:shadow-none hover:-translate-y-0.5 active:scale-[0.98]"
-              >
-                <CheckCircle className="w-6 h-6" /> Place Order
-              </button>
-              <button
-                onClick={handleCart}
-                className="flex-1 py-6 border-2 border-green-600 bg-transparent text-green-600 hover:bg-green-600 hover:text-white rounded-4xl font-black text-lg flex items-center justify-center gap-3 transition-all hover:shadow-2xl hover:shadow-green-600/20 hover:-translate-y-0.5 active:scale-[0.98]"
-              >
-                {cartSuccess ? <><CheckCircle className="w-6 h-6" /> Added!</> : <><ShoppingCart className="w-6 h-6" /> Add to Cart</>}
-              </button>
-            </div>
-
-            {/* Trust chips */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { icon: Truck, label: 'Same-day Delivery', sub: 'Order by 2PM' },
-                { icon: Leaf,  label: 'Freshness Guaranteed', sub: '100% farm-fresh' },
-                { icon: ShieldCheck, label: 'Brgy. Verified', sub: 'Trust certified' },
-              ].map((pill, i) => (
-                <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 text-center shadow-sm">
-                  <pill.icon className="w-5 h-5 text-green-500 mx-auto mb-1.5" />
-                  <p className="text-[10px] font-black text-gray-700 uppercase tracking-widest">{pill.label}</p>
-                  <p className="text-[9px] text-gray-400 font-bold mt-0.5">{pill.sub}</p>
-                </div>
-              ))}
             </div>
           </div>
         </div>
 
-        {/* ── Detail Tabs ────────────────────────────────────────── */}
-        <div className="bg-white rounded-[3rem] shadow-2xl shadow-gray-200/30 border border-gray-100 overflow-hidden">
-          {/* Tabs Header */}
-          <div className="flex border-b border-gray-100">
-            {(['details', 'reviews', 'seller'] as const).map(tab => (
+        <div className="mt-4 bg-white border border-slate-200 rounded-2xl shadow-sm p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 grid place-items-center">
+              <User size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">{farmerName}</p>
+              <p className="text-xs text-slate-500">{farmerCity}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-5 text-sm">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Farm Name</p>
+              <p className="font-medium text-slate-800">{asText(farmerProfile?.farm_name, 'Not provided')}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Farm Address</p>
+              <p className="font-medium text-slate-800">{asText(farmerProfile?.farm_address ?? farmerProfile?.address, 'Not provided')}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="border-b border-slate-100 px-4">
+            {(['overview', 'reviews', 'farmer'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-6 font-black text-sm uppercase tracking-widest transition-all border-b-2 ${
+                className={`h-12 px-4 text-sm font-semibold border-b-2 transition ${
                   activeTab === tab
-                    ? 'border-green-600 text-green-600 bg-green-50/40'
-                    : 'border-transparent text-gray-400 hover:text-gray-700'
+                    ? 'text-green-700 border-green-600'
+                    : 'text-slate-500 border-transparent hover:text-slate-700'
                 }`}
               >
-                {tab === 'details' ? 'Product Details' : tab === 'reviews' ? `Reviews (${MOCK_REVIEWS.length})` : 'About the Seller'}
+                {tab === 'overview' ? 'Overview' : tab === 'reviews' ? `Reviews (${reviewCount})` : 'Farmer'}
               </button>
             ))}
           </div>
 
-          <div className="p-10 lg:p-14">
-
-            {/* --- Details Tab --- */}
-            {activeTab === 'details' && (
-              <div className="grid lg:grid-cols-2 gap-12 animate-in fade-in duration-300">
-                <div className="space-y-6">
-                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">About this Product</h2>
-                  <p className="text-gray-500 font-medium leading-relaxed text-lg">
-                    {product.name} sourced fresh from {product.location}. Carefully hand-picked at peak ripeness to ensure maximum freshness and flavor when it arrives at your door. No preservatives, no cold-storage delays — direct from the farm.
+          <div className="p-5 lg:p-6">
+            {activeTab === 'overview' && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-2">Description</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">
+                    {asText(product.p_description, 'No description provided for this product yet.')}
                   </p>
-                  <div className="grid grid-cols-2 gap-4">
-                    {[
-                      { label: 'Category',    value: product.category },
-                      { label: 'Unit',        value: product.unit },
-                      { label: 'Price / unit',value: `₱${product.price}` },
-                      { label: 'Stock',       value: `${product.stock} ${product.unit}` },
-                      { label: 'Location',    value: product.location },
-                      { label: 'Harvest Date',value: 'Feb 28, 2026' },
-                    ].map((item, i) => (
-                      <div key={i} className="bg-gray-50 p-4 rounded-2xl">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{item.label}</p>
-                        <p className="font-black text-gray-900">{item.value}</p>
-                      </div>
-                    ))}
-                  </div>
                 </div>
-                <div className="space-y-6">
-                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">Delivery Information</h2>
-                  {[
-                    { icon: Truck,   title: 'Standard Delivery',   desc: '2–4 hours within 25km radius. ₱50 flat fee.' },
-                    { icon: Zap,     title: 'Express Delivery',    desc: 'Order before 12PM for 1-hour delivery. ₱90 fee.' },
-                    { icon: Package, title: 'Pick-up Available',   desc: 'Free self-pickup at barangay drop-off point.' },
-                    { icon: Clock,   title: 'Delivery Window',     desc: 'Mon–Sat, 7AM – 6PM. Sunday on request.' },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-start gap-5">
-                      <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600 shrink-0">
-                        <item.icon className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="font-black text-gray-900">{item.title}</p>
-                        <p className="text-sm text-gray-400 font-medium mt-0.5">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-slate-100 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Category</p>
+                    <p className="mt-1 text-sm font-medium text-slate-800">{category}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-100 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Unit</p>
+                    <p className="mt-1 text-sm font-medium text-slate-800">{unit}</p>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* --- Reviews Tab --- */}
             {activeTab === 'reviews' && (
-              <div className="space-y-8 animate-in fade-in duration-300">
-                <div className="flex items-center gap-8 pb-8 border-b border-gray-100">
-                  <div className="text-center shrink-0">
-                    <p className="text-7xl font-black text-gray-900 tracking-tighter">4.9</p>
-                    <div className="flex justify-center gap-1 mt-2 mb-1">
-                      {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 text-amber-400 fill-amber-400" />)}
-                    </div>
-                    <p className="text-sm font-bold text-gray-400">Based on 48 reviews</p>
+              <div className="space-y-6">
+                <div className="rounded-xl border border-slate-100 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-2xl font-bold text-slate-900">{averageRating}</span>
+                    <span className="text-sm text-slate-500">/ 5</span>
                   </div>
-                  <div className="flex-1 space-y-2">
-                    {[5, 4, 3, 2, 1].map(star => (
-                      <div key={star} className="flex items-center gap-3">
-                        <span className="text-xs font-black text-gray-400 w-4">{star}</span>
-                        <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-amber-400 rounded-full" style={{ width: star === 5 ? '80%' : star === 4 ? '15%' : '3%' }} />
+                  <div className="space-y-2">
+                    {ratingBreakdown.map((row) => {
+                      const pct = reviews.length > 0 ? (row.count / reviews.length) * 100 : 0;
+                      return (
+                        <div key={row.stars} className="flex items-center gap-3">
+                          <span className="w-10 text-xs text-slate-500">{row.stars}?</span>
+                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-400" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="w-6 text-right text-xs text-slate-500">{row.count}</span>
                         </div>
-                        <span className="text-xs font-bold text-gray-400 w-6">{star === 5 ? 38 : star === 4 ? 7 : star === 3 ? 2 : 1}</span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {token && (
+                  <div className="rounded-xl border border-slate-100 p-4 space-y-3">
+                    <p className="text-sm font-semibold text-slate-800">Write a review</p>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <button key={s} onClick={() => setNewRating(s)} className="text-amber-500">
+                          <Star size={18} className={s <= newRating ? 'fill-current' : ''} />
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Share your experience with this product"
+                      className="w-full h-28 rounded-lg border border-slate-200 p-3 text-sm outline-none focus:ring-2 focus:ring-green-200"
+                    />
+                    <button
+                      onClick={handleAddReview}
+                      disabled={!newComment.trim()}
+                      className="h-10 px-4 rounded-lg bg-slate-900 hover:bg-green-700 disabled:bg-slate-300 text-white text-sm font-semibold"
+                    >
+                      Submit Review
+                    </button>
+                  </div>
+                )}
+
+                {reviews.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+                    No reviews yet.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <div key={review.id} className="rounded-xl border border-slate-100 p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{asText(`${review.first_name} ${review.last_name}`, 'Anonymous')}</p>
+                            <div className="mt-1 flex items-center gap-1 text-amber-500">
+                              {[...Array(5)].map((_, i) => (
+                                <Star key={i} size={14} className={i < review.rating ? 'fill-current' : ''} />
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-500">{new Date(review.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <p className="mt-3 text-sm text-slate-700 leading-relaxed">{review.comment}</p>
                       </div>
                     ))}
                   </div>
-                </div>
-                <div className="space-y-6">
-                  {MOCK_REVIEWS.map((rev, i) => (
-                    <div key={i} className="flex gap-5 p-6 bg-gray-50/50 rounded-3xl">
-                      <div className="w-12 h-12 rounded-2xl bg-green-100 text-green-700 font-black flex items-center justify-center text-sm shrink-0">
-                        {rev.avatar}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <div>
-                            <span className="font-black text-gray-900">{rev.name}</span>
-                            <span className="text-xs text-gray-400 font-bold ml-3">{rev.date}</span>
-                          </div>
-                          <div className="flex gap-0.5">
-                            {[...Array(rev.rating)].map((_, j) => <Star key={j} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />)}
-                          </div>
-                        </div>
-                        <p className="text-gray-600 font-medium leading-relaxed">{rev.text}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                )}
               </div>
             )}
 
-            {/* --- Seller Tab --- */}
-            {activeTab === 'seller' && (
-              <div className="grid lg:grid-cols-2 gap-12 animate-in fade-in duration-300">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-6">
-                    <div className="w-24 h-24 rounded-3xl bg-orange-50 border-4 border-orange-100 flex items-center justify-center text-orange-500 font-black text-4xl shadow-xl cursor-pointer hover:scale-105 transition-transform" onClick={() => navigate(`/profile/farmer-${product.seller.replace(/\s+/g, '-').toLowerCase()}`)}>
-                      {product.seller.charAt(0)}
-                    </div>
-                    <div>
-                      <h2 
-                        className="text-3xl font-black text-gray-900 tracking-tight cursor-pointer hover:text-green-600 flex items-center gap-2 transition-colors group"
-                        onClick={() => navigate(`/profile/farmer-${product.seller.replace(/\s+/g, '-').toLowerCase()}`)}
-                      >
-                        {product.seller}
-                        <ExternalLink className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </h2>
-                      <p className="text-green-600 font-bold flex items-center gap-1.5 mt-1">
-                        <BadgeCheck className="w-4 h-4" /> Verified Farmer
-                      </p>
-                      <p className="text-sm text-gray-400 font-medium mt-1 flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5" /> {product.location}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-gray-500 font-medium leading-relaxed">
-                    A dedicated local farmer from {product.location} with over 5 years of experience growing {product.category.toLowerCase()}. Certified by the local Barangay trust program and known for consistent quality and timely deliveries.
-                  </p>
-                  <div className="grid grid-cols-3 gap-4">
-                    {[
-                      { label: 'Products',    value: '12' },
-                      { label: 'Orders',      value: '340+' },
-                      { label: 'Rating',      value: '4.9★' },
-                    ].map((s, i) => (
-                      <div key={i} className="bg-gray-50 p-5 rounded-2xl text-center">
-                        <p className="text-2xl font-black text-gray-900">{s.value}</p>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">{s.label}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => navigate('/messages')}
-                    className="w-full py-5 bg-gray-900 hover:bg-green-700 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl"
-                  >
-                    <MessageSquare className="w-5 h-5" /> Message {product.seller}
-                  </button>
+            {activeTab === 'farmer' && (
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-slate-100 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Name</p>
+                  <p className="mt-1 text-sm font-medium text-slate-800">{farmerName}</p>
                 </div>
-                <div className="space-y-4">
-                  <h3 className="font-black text-gray-900 text-xl">More from this Seller</h3>
-                  {sampleProducts.filter(p => p.seller === product.seller && p.id !== product.id).slice(0, 2).map(p => (
-                    <button key={p.id} onClick={() => navigate(`/product/${p.id}`)} className="w-full flex items-center gap-5 p-5 bg-gray-50 hover:bg-green-50 rounded-2xl border border-gray-100 hover:border-green-100 transition-all group text-left">
-                      <img src={p.image} alt={p.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-black text-gray-900 truncate">{p.name}</p>
-                        <p className="text-sm text-gray-400 font-bold">₱{p.price} / {p.unit}</p>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-green-500 group-hover:translate-x-1 transition-all shrink-0" />
-                    </button>
-                  ))}
-                  {sampleProducts.filter(p => p.seller === product.seller && p.id !== product.id).length === 0 && (
-                    <p className="text-gray-400 font-medium italic">No other products from this seller yet.</p>
-                  )}
+                <div className="rounded-xl border border-slate-100 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">City</p>
+                  <p className="mt-1 text-sm font-medium text-slate-800">{farmerCity}</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 p-4 sm:col-span-2">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-1">Farm Address</p>
+                  <p className="text-sm font-medium text-slate-800">{asText(farmerProfile?.farm_address ?? farmerProfile?.address, 'Not provided')}</p>
                 </div>
               </div>
             )}
           </div>
         </div>
+      </div>
 
-        {/* ── Related Products ───────────────────────────────────── */}
-        {related.length > 0 && (
-          <div className="space-y-8">
-            <div className="flex items-end justify-between">
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight">You may also like</h2>
-              <button onClick={() => navigate('/marketplace')} className="text-sm font-black text-green-600 flex items-center gap-1 hover:underline underline-offset-4 decoration-2">
-                Browse all <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {related.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => navigate(`/product/${p.id}`)}
-                  className="bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-xl shadow-gray-200/30 hover:shadow-green-900/10 hover:-translate-y-1 transition-all text-left group"
-                >
-                  <div className="h-48 overflow-hidden">
-                    <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  </div>
-                  <div className="p-6">
-                    <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1">{p.category}</p>
-                    <h3 className="text-xl font-black text-gray-900 mb-1 group-hover:text-green-700 transition-colors">{p.name}</h3>
-                    <p className="text-sm text-gray-400 font-bold mb-3 flex items-center gap-1.5"><User className="w-3.5 h-3.5" />{p.seller}</p>
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Price / {p.unit}</p>
-                        <p className="text-2xl font-black text-gray-900">₱{p.price}</p>
-                      </div>
-                      <div className="w-12 h-12 bg-green-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/30">
-                        <ShoppingCart className="w-5 h-5" />
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
+      <div className="fixed inset-x-0 bottom-0 md:hidden border-t border-slate-200 bg-white/95 backdrop-blur">
+        <div className="px-4 py-3 flex items-center gap-2">
+          <button
+            onClick={handleChatFarmer}
+            disabled={isOwnListing}
+            className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-semibold inline-flex items-center gap-1.5 disabled:bg-slate-100 disabled:text-slate-400"
+          >
+            <MessageSquare size={14} /> Message
+          </button>
+          <button
+            onClick={() => {
+              const pObj: Product = {
+                id: toNumber(product.p_id),
+                name,
+                price,
+                unit,
+                seller: farmerName,
+                sellerUserId: farmerId > 0 ? farmerId : undefined,
+                location,
+                stock,
+                image: imageUrl,
+                category,
+              };
+              cartService.addToCart(pObj, qty);
+              showSuccess(`${name} added to cart.`);
+            }}
+            disabled={isOutOfStock}
+            className="h-10 px-3 rounded-lg bg-green-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 disabled:bg-slate-300"
+          >
+            <ShoppingCart size={14} /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+          </button>
+          <div className="ml-auto text-right">
+            <p className="text-[10px] uppercase tracking-wide text-slate-500">Price</p>
+            <p className="text-sm font-semibold text-slate-900">P {price.toLocaleString()} / {unit}</p>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -36,9 +36,13 @@ const FarmerOrdersPage: React.FC = () => {
 
   const handleUpdateStatus = async (orderId: number, newStatus: string) => {
     try {
+      const token = localStorage.getItem('agrilink_token');
       const res = await fetch(`${API_BASE_URL}/purchases/status/${orderId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ status: newStatus, u_id: userId })
       });
       if (res.ok) fetchOrders();
@@ -60,8 +64,8 @@ const FarmerOrdersPage: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
           <div className="animate-fadeIn">
-            <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2">Order Desk<span className="text-[#5ba409]">.</span></h1>
-            <p className="text-xl text-gray-400 font-medium">Fulfill requests and manage your sales</p>
+            <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter mb-1">Order Desk<span className="text-[#5ba409]">.</span></h1>
+            <p className="text-base text-gray-400 font-medium tracking-tight">Fulfill requests and manage your sales</p>
           </div>
 
           <div className="flex bg-white p-2 rounded-3xl shadow-xl border border-gray-100">

@@ -1,56 +1,108 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
-  Filter,
   ChevronDown,
   LayoutGrid,
   List,
-  Star,
-  MapPin,
-  Truck,
-  ShieldCheck,
-  Zap,
-  Leaf
+  Heart,
+  Package,
+  SlidersHorizontal,
+  ChevronRight,
+  Sparkles,
+  User,
+  Star
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { sampleProducts } from '../../data';
 import ProductCard from '../ui/ProductCard';
-import ProductDetailModal from '../ui/ProductDetailModal';
 import { API_BASE_URL } from '../../api/apiConfig';
 import type { Product } from '../../types';
+import { useToast } from '../ui/Toast';
 
 const MarketplacePage: React.FC = () => {
+  const navigate = useNavigate();
+  const { info, error, success } = useToast();
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [priceRange, setPriceRange] = useState<number>(1000);
+  const [minPrice, setMinPrice] = useState<number>(0);
+  const [maxPrice, setMaxPrice] = useState<number>(1000000);
   const [sortBy, setSortBy] = useState<string>('featured');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
-  const openDetailModal = (product: Product) => {
-    setSelectedProduct(product);
-    setIsDetailModalOpen(true);
+  const token = localStorage.getItem('agrilink_token');
+
+  const fetchFavorites = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/favorites`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.favorites) {
+          const ids = data.favorites.map((f: any) => f.p_id || f.product_id);
+          setFavoriteIds(ids);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch favorites:', err);
+    }
   };
 
-  const categories = [
-    { name: 'All', icon: Zap },
-    { name: 'Vegetables', icon: Leaf },
-    { name: 'Fruits', icon: Star },
-    { name: 'Grains', icon: ShieldCheck },
-    { name: 'Root Crops', icon: MapPin },
-    { name: 'Others', icon: Filter }
-  ];
+  useEffect(() => {
+    fetchFavorites();
+    const handleFocus = () => fetchFavorites();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [token]);
 
-  React.useEffect(() => {
+  const handleToggleFavorite = async (productId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!token) {
+      info('Sign in to save harvests.');
+      navigate('/login');
+      return;
+    }
+    const isFav = favoriteIds.includes(productId);
+    const previousFavorites = [...favoriteIds];
+    if (isFav) setFavoriteIds(prev => prev.filter(id => id !== productId));
+    else setFavoriteIds(prev => [...prev, productId]);
+
+    try {
+      const method = isFav ? 'DELETE' : 'POST';
+      const url = isFav ? `${API_BASE_URL}/favorites/${productId}` : `${API_BASE_URL}/favorites`;
+      const res = await fetch(url, {
+        method,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: isFav ? undefined : JSON.stringify({ productId })
+      });
+      if (!res.ok) {
+        setFavoriteIds(previousFavorites);
+        error('Action failed.');
+      } else {
+        if (isFav) success('Harvest unsaved.');
+        else success('Harvest saved!');
+      }
+    } catch (err) {
+      setFavoriteIds(previousFavorites);
+      error('Network error.');
+    }
+  };
+
+  useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
         const res = await fetch(`${API_BASE_URL}/products`);
+        if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
-
         if (data.products) {
           const mappedProducts: Product[] = data.products.map((p: any) => ({
             id: p.p_id,
@@ -58,233 +110,229 @@ const MarketplacePage: React.FC = () => {
             price: parseFloat(p.p_price),
             unit: p.p_unit,
             seller: `${p.first_name} ${p.last_name}`,
-            location: 'Local Farm', // We don't have location in users_table yet
+            location: p.city || 'Local Farm',
             stock: parseFloat(p.p_quantity),
-            image: p.p_image || '🌱',
+            image: p.p_image || '',
             category: p.cat_name || 'Others',
-            badges: p.p_status === 'active' ? ['Direct Source'] : []
+            badges: [],
+            avgRating: parseFloat(p.sellerAvgRating) || 5.0,
+            reviewCount: parseInt(p.sellerReviewCount) || 0,
+            sellerUserId: Number(p.u_id)
           }));
           setProducts(mappedProducts);
         }
       } catch (err) {
-        console.error('Failed to fetch products:', err);
+        setFetchError('Currently unable to load products.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchProducts();
   }, []);
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
-    const matchesPrice = product.price <= priceRange;
-    return matchesSearch && matchesCategory && matchesPrice;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           product.seller.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+      const matchesPrice = product.price >= minPrice && product.price <= maxPrice;
+      const matchesFavorite = !showFavoritesOnly || favoriteIds.includes(Number(product.id));
+      return matchesSearch && matchesCategory && matchesPrice && matchesFavorite;
+    }).sort((a, b) => {
+      if (sortBy === 'price-low') return a.price - b.price;
+      if (sortBy === 'price-high') return b.price - a.price;
+      return (b as any).avgRating - (a as any).avgRating;
+    });
+  }, [products, searchTerm, selectedCategory, minPrice, maxPrice, showFavoritesOnly, favoriteIds, sortBy]);
+
+  const categories = ['All', 'Vegetables', 'Fruits', 'Grains', 'Root Crops', 'Others'];
 
   return (
     <div className="min-h-screen bg-[#FDFDFD]">
-      {/* 🚀 Hero Section */}
-      <section className="relative h-[400px] overflow-hidden bg-gradient-to-br from-[#1B5E20] to-[#5ba409] flex items-center">
-        <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1542838132-92c53300491e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center mix-blend-overlay"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#1B5E20]/80 to-transparent"></div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="max-w-2xl animate-in fade-in slide-in-from-left-8 duration-700">
-            <div className="flex items-center gap-2 text-white/80 font-black text-xs uppercase tracking-[0.3em] mb-4 bg-white/10 w-fit px-4 py-2 rounded-full backdrop-blur-md border border-white/20">
-              <Leaf className="w-4 h-4 text-green-300" /> Direct from Local Farms
+      
+      {/* 🏙️ Clean & Neat SaaS Marketplace Header */}
+      <div className="bg-white border-b border-gray-100 py-8 lg:py-10">
+        <div className="max-w-[1600px] mx-auto px-6 sm:px-10 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+               <div className="w-6 h-6 rounded-lg bg-green-50 flex items-center justify-center text-[#5ba409]">
+                  <Sparkles size={12} />
+               </div>
+               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#5ba409]">Digital Agriculture Marketplace</span>
             </div>
-            <h1 className="text-6xl md:text-7xl font-black text-white mb-6 tracking-tight leading-[0.9]">
-              Eat Fresh, <br />
-              <span className="text-green-300">Support Local.</span>
+            <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-none">
+              Marketplace<span className="text-[#5ba409]">.</span>
             </h1>
-            <p className="text-xl text-green-50/80 mb-8 font-medium max-w-lg">
-              Unlock the freshest produce harvesting right now in your community. Direct from farmer to your table.
-            </p>
-
-            <div className="relative max-w-md group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#5ba409] transition-colors w-5 h-5" />
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Connecting buyers directly to farmers</p>
+          </div>
+          <div className="flex-1 max-w-xl w-full relative group">
+            <div className="relative">
               <input
                 type="text"
-                placeholder="What are you craving today?..."
+                placeholder="Search harvests, farmers, or locations..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-14 pr-4 py-5 bg-white rounded-3xl shadow-2xl text-lg font-bold outline-none ring-4 ring-transparent focus:ring-green-400/20 transition-all placeholder:text-gray-300"
+                className="w-full pl-12 pr-6 py-3.5 bg-gray-50 border border-transparent rounded-2xl text-sm font-medium focus:bg-white focus:border-[#5ba409]/20 transition-all outline-none placeholder:text-gray-300"
               />
+              <Search className="absolute left-4.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-300 group-focus-within:text-[#5ba409] transition-colors" />
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* 🏷️ Horizontal Category Strip */}
-        <div className="flex items-center gap-4 overflow-x-auto pb-8 no-scrollbar scroll-smooth">
-          {categories.map((cat) => (
-            <button
-              key={cat.name}
-              onClick={() => setSelectedCategory(cat.name)}
-              className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm whitespace-nowrap transition-all ${selectedCategory === cat.name
-                ? 'bg-[#5ba409] text-white shadow-xl shadow-green-500/30 -translate-y-1'
-                : 'bg-white text-gray-500 border border-gray-100 hover:border-green-200 hover:text-[#5ba409] hover:bg-green-50/30'
-                }`}
-            >
-              <cat.icon className="w-5 h-5" />
-              {cat.name}
-            </button>
-          ))}
+      {/* 🚀 Functional Sticky Bar - Layout Fixed */}
+      <div className="sticky top-[72px] z-30 bg-white/80 backdrop-blur-md border-b border-gray-50 py-3.5">
+        <div className="max-w-[1600px] mx-auto px-6 sm:px-10 flex items-center justify-between">
+           <div className="flex items-center gap-3">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#5ba409]" />
+              <p className="text-[11px] font-black text-gray-900 uppercase tracking-widest">
+                Active Listings: <span className="text-[#5ba409]">{filteredProducts.length}</span>
+              </p>
+           </div>
+           
+           <div className="flex items-center gap-6">
+              {/* 🛠️ Improved Layout Toggle (SaaS Style) */}
+              <div className="flex bg-gray-100/50 p-1 rounded-xl border border-gray-100 shrink-0">
+                 <button 
+                  onClick={() => setViewMode('grid')} 
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-[10px] font-black uppercase tracking-widest ${viewMode === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                 >
+                    <LayoutGrid size={12} /> Grid
+                 </button>
+                 <button 
+                  onClick={() => setViewMode('list')} 
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-[10px] font-black uppercase tracking-widest ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                 >
+                    <List size={12} /> List
+                 </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-300">Sort:</span>
+                 <div className="relative group">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="appearance-none bg-transparent text-[11px] font-black text-gray-900 uppercase tracking-widest outline-none cursor-pointer pr-4"
+                    >
+                      <option value="featured">Featured</option>
+                      <option value="rating">Top Rated</option>
+                      <option value="price-low">Economic</option>
+                      <option value="price-high">Premium</option>
+                    </select>
+                    <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-300 pointer-events-none" />
+                 </div>
+              </div>
+           </div>
         </div>
+      </div>
 
-        <div className="grid lg:grid-cols-4 gap-12">
-          {/* 🔍 Sidebar Filters */}
-          <aside className="lg:col-span-1 space-y-10 order-2 lg:order-1">
-            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/40">
-              <div className="flex items-center gap-3 mb-8">
-                <Filter className="w-5 h-5 text-[#5ba409]" />
-                <h3 className="text-xl font-black text-gray-900 tracking-tight">Refine Search</h3>
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-10 py-10 flex flex-col lg:flex-row gap-10">
+        <aside className="w-full lg:w-56 shrink-0">
+           <div className="sticky top-[140px] space-y-8">
+              <div className="space-y-3">
+                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">Collections</h3>
+                 <div className="flex flex-col gap-0.5">
+                    {categories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+                          selectedCategory === cat 
+                          ? 'bg-[#5ba409] text-white shadow-lg shadow-green-900/10' 
+                          : 'text-gray-500 hover:bg-green-50/50 hover:text-[#5ba409]'
+                        }`}
+                      >
+                        {cat}
+                        {selectedCategory === cat && <ChevronRight size={12} className="opacity-60" />}
+                      </button>
+                    ))}
+                 </div>
               </div>
 
-              {/* Price Filter */}
-              <div className="mb-10">
-                <div className="flex justify-between items-center mb-4">
-                  <label className="text-xs font-black uppercase tracking-widest text-gray-400">Max Price</label>
-                  <span className="text-[#5ba409] font-black text-lg font-mono">₱{priceRange}</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1000"
-                  step="10"
-                  value={priceRange}
-                  onChange={(e) => setPriceRange(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#5ba409]"
-                />
-                <div className="flex justify-between text-[10px] text-gray-400 mt-2 font-black">
-                  <span>₱0</span>
-                  <span>₱1000</span>
-                </div>
+              <div className="pt-8 border-t border-gray-100 space-y-3">
+                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">Economics</h3>
+                 <div className="grid grid-cols-2 gap-2">
+                    <input 
+                      type="number" 
+                      placeholder="Min" 
+                      value={minPrice}
+                      onChange={(e) => setMinPrice(parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2.5 bg-gray-50 border border-transparent rounded-xl text-[11px] font-black focus:bg-white focus:border-green-100 transition-all outline-none" 
+                    />
+                    <input 
+                      type="number" 
+                      placeholder="Max" 
+                      value={maxPrice === 1000000 ? '' : maxPrice}
+                      onChange={(e) => setMaxPrice(parseInt(e.target.value) || 1000000)}
+                      className="w-full px-3 py-2.5 bg-gray-50 border border-transparent rounded-xl text-[11px] font-black focus:bg-white focus:border-green-100 transition-all outline-none" 
+                    />
+                 </div>
               </div>
 
-              {/* Status Filters */}
-              <div className="space-y-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Product Type</p>
-                {['Brgy. Verified', 'Organic Certified', 'Top Rated'].map((label) => (
-                  <label key={label} className="flex items-center justify-between group cursor-pointer hover:text-[#5ba409] transition-colors">
-                    <div className="flex items-center gap-3">
-                      <input type="checkbox" className="w-5 h-5 rounded border-2 border-gray-200 text-[#5ba409] focus:ring-[#5ba409] accent-[#5ba409]" />
-                      <span className="text-sm font-bold text-gray-600 group-hover:text-gray-900 transition-colors">{label}</span>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Support/Promo Widget */}
-            <div className="bg-[#1B5E20] p-8 rounded-[2rem] text-white relative overflow-hidden group">
-              <div className="relative z-10">
-                <h4 className="text-lg font-black mb-2">Farmer Support 🤝</h4>
-                <p className="text-sm text-green-100/70 mb-6 leading-relaxed">100% of the revenue goes directly to your chosen local farmer.</p>
-                <button className="text-xs font-black uppercase tracking-widest underline decoration-green-400 underline-offset-4 decoration-2">Learn our mission</button>
-              </div>
-              <Leaf className="absolute -bottom-4 -right-4 w-24 h-24 text-white/10 rotate-12 group-hover:rotate-45 transition-transform duration-700" />
-            </div>
-          </aside>
-
-          {/* 🛒 Main Product Area */}
-          <main className="lg:col-span-3 order-1 lg:order-2">
-            <div className="flex items-center justify-between mb-10">
-              <div>
-                <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">
-                  Browse {selectedCategory === 'All' ? 'Our Marketplace' : selectedCategory}
-                </p>
-                <h2 className="text-3xl font-black text-gray-900 tracking-tight">
-                  {filteredProducts.length} <span className="text-[#5ba409]">Results</span> Found
-                </h2>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="hidden md:flex items-center bg-gray-100 p-1.5 rounded-2xl">
+              {token && (
+                <div className="pt-8 border-t border-gray-100">
                   <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-[#5ba409]' : 'text-gray-400 hover:text-gray-600'}`}
+                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                    className={`w-full p-1 rounded-[1.5rem] flex items-center transition-all group ${
+                      showFavoritesOnly 
+                      ? 'bg-[#5ba409] text-white shadow-xl shadow-green-900/20' 
+                      : 'bg-white border border-gray-100 text-gray-400 hover:border-gray-200 hover:text-gray-900'
+                    }`}
                   >
-                    <LayoutGrid className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-[#5ba409]' : 'text-gray-400 hover:text-gray-600'}`}
-                  >
-                    <List className="w-5 h-5" />
+                     <div className={`p-3 rounded-2xl transition-all ${showFavoritesOnly ? 'bg-white/20' : 'bg-gray-50 text-[#5ba409]'}`}>
+                        <Heart size={16} className={showFavoritesOnly ? 'fill-current' : ''} />
+                     </div>
+                     <div className="flex-1 px-3 text-left">
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${showFavoritesOnly ? 'text-white' : 'text-gray-900'}`}>Saved Items</p>
+                        <p className={`text-[9px] font-bold ${showFavoritesOnly ? 'text-white/60' : 'text-gray-400'}`}>Source Later</p>
+                     </div>
+                     <div className={`mr-2 px-3 py-1 rounded-full text-[11px] font-black ${showFavoritesOnly ? 'bg-white text-[#5ba409]' : 'bg-[#5ba409] text-white'}`}>
+                        {favoriteIds.length}
+                     </div>
                   </button>
                 </div>
+              )}
+           </div>
+        </aside>
 
-                <div className="relative group">
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="appearance-none bg-white border border-gray-100 rounded-2xl pl-6 pr-12 py-4 font-black text-sm text-gray-600 cursor-pointer shadow-xl shadow-gray-200/20 focus:outline-none focus:ring-2 focus:ring-green-400/20 transition-all"
-                  >
-                    <option value="featured">Featured First</option>
-                    <option value="newest">Newest Arrivals</option>
-                    <option value="price-low">Price: Low to High</option>
-                    <option value="price-high">Price: High to Low</option>
-                  </select>
-                  <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover:text-gray-900 transition-colors" />
+        <main className="flex-1 min-w-0">
+           {loading ? (
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+               {[...Array(8)].map((_, i) => (
+                 <div key={i} className="bg-gray-50 animate-pulse rounded-2xl aspect-[16/9]" />
+               ))}
+             </div>
+           ) : (
+             <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'} gap-5 animate-in fade-in duration-500`}>
+               {filteredProducts.map((p) => (
+                 <ProductCard
+                   key={p.id}
+                   product={p}
+                   viewMode={viewMode}
+                   isFavorited={favoriteIds.includes(Number(p.id))}
+                   onToggleFavorite={handleToggleFavorite}
+                   onClick={() => navigate(`/buyer/product/${p.id}`)}
+                 />
+               ))}
+             </div>
+           )}
+
+           {!loading && filteredProducts.length === 0 && (
+             <div className="py-24 text-center bg-gray-50/50 border border-gray-100 rounded-[2rem]">
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-50">
+                   <Package size={24} className="text-gray-100" />
                 </div>
-              </div>
-            </div>
-
-            {/* Products Grid */}
-            {loading ? (
-              <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
-                {[1, 2, 3, 4, 5, 6].map(i => (
-                  <div key={i} className="h-[400px] bg-gray-100 animate-pulse rounded-[2.5rem]"></div>
-                ))}
-              </div>
-            ) : (
-              <div className={`grid gap-8 ${viewMode === 'grid' ? 'sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
-                {filteredProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onClick={() => openDetailModal(product)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-32 bg-gray-50/50 rounded-[3rem] border-2 border-dashed border-gray-100">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Search className="w-8 h-8 text-gray-300" />
-                </div>
-                <h3 className="text-3xl font-black text-gray-900 mb-2 tracking-tight">No products found</h3>
-                <p className="text-gray-500 font-medium max-w-sm mx-auto">
-                  Try adjusting your filters or search term to discover other fresh produce.
-                </p>
+                <h3 className="text-xl font-black text-gray-900 tracking-tight">Zero Harvests matches</h3>
                 <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setPriceRange(200);
-                    setSelectedCategory('All');
-                  }}
-                  className="mt-8 px-10 py-4 bg-[#5ba409] text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-green-500/30 hover:-translate-y-1 transition-all"
+                  onClick={() => { setSearchTerm(''); setMinPrice(0); setMaxPrice(1000000); setSelectedCategory('All'); setShowFavoritesOnly(false); }}
+                  className="mt-8 px-8 py-3 bg-[#5ba409] text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl shadow-green-900/10 hover:bg-green-700 transition-all"
                 >
-                  Clear All Filters
+                  Reset Marketplace
                 </button>
-              </div>
-            )}
-            {/* Product Detail Modal */}
-            <ProductDetailModal
-              isOpen={isDetailModalOpen}
-              onClose={() => {
-                setIsDetailModalOpen(false);
-                setSelectedProduct(null);
-              }}
-              product={selectedProduct}
-            />
-          </main>
-        </div>
+             </div>
+           )}
+        </main>
       </div>
     </div>
   );

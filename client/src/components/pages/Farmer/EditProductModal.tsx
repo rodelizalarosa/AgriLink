@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Leaf, Loader2, AlertCircle, X, CheckCircle2, Image as ImageIcon, Info, ChevronRight, LayoutGrid, RefreshCcw } from 'lucide-react';
-import { API_BASE_URL } from '../../../api/apiConfig';
+import { API_BASE_URL, getFullImageUrl } from '../../../api/apiConfig';
 import { useToast } from '../../ui/Toast';
 
 interface EditProductModalProps {
@@ -71,8 +71,7 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ productId, initialP
         harvest_date: p.harvest_date ? p.harvest_date.split('T')[0] : ''
       });
       if (p.p_image) {
-        const baseUrl = API_BASE_URL.replace('/api', '');
-        setImagePreview(p.p_image.startsWith('http') ? p.p_image : `${baseUrl}${p.p_image}`);
+        setImagePreview(getFullImageUrl(p.p_image));
       }
       return;
     }
@@ -99,8 +98,7 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ productId, initialP
             harvest_date: p.harvest_date ? p.harvest_date.split('T')[0] : ''
           });
           if (p.p_image) {
-            const baseUrl = API_BASE_URL.replace('/api', '');
-            setImagePreview(p.p_image.startsWith('http') ? p.p_image : `${baseUrl}${p.p_image}`);
+            setImagePreview(getFullImageUrl(p.p_image));
           }
         } else {
           setError('Failed to load product.');

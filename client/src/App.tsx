@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import './App.css';
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
-// Components
 import Navbar from './components/common/Navbar';
 import Sidebar from './components/common/Sidebar';
 import RouteTransition from './components/ui/RouteTransition';
@@ -16,7 +15,6 @@ import FarmerPhenotypingPage from './components/pages/Farmer/FarmerPhenotypingPa
 import EditProductModalRoute from './components/pages/Farmer/EditProductModalRoute';
 import AddProductModal from './components/pages/Farmer/AddProductModal';
 import EditProductModal from './components/pages/Farmer/EditProductModal';
-import BuyerDashboard from './components/pages/Buyer/BuyerDashboard';
 import ProductUploadPage from './components/pages/Farmer/ProductUploadPage';
 import AdminDashboard from './components/pages/Admin/AdminDashboard';
 import AdminUsersPage from './components/pages/Admin/AdminUsersPage';
@@ -30,18 +28,17 @@ import MessagesPage from './components/pages/MessagesPage';
 import NotificationsPage from './components/pages/NotificationsPage';
 import ProductDetailPage from './components/pages/Buyer/ProductDetailPage';
 import CartPage from './components/pages/Buyer/CartPage';
-import CheckoutPage from './components/pages/Buyer/CheckoutPage';
 import MapPage from './components/pages/MapPage';
 import AboutPage from './components/pages/AboutPage';
-import { ArrowUp } from 'lucide-react';
 import BrgyDashboard from './components/pages/Brgy/BrgyDashboard';
 import BrgyListingsPage from './components/pages/Brgy/BrgyListingsPage';
 import BrgyAwardBadgePage from './components/pages/Brgy/BrgyAwardBadgePage';
-import { ToastContainer } from './components/ui/Toast';
 import OnboardingModal from './components/modals/OnboardingModal';
-import type { FC } from 'react';
+import { ArrowUp } from 'lucide-react';
+import { ToastContainer } from './components/ui/Toast';
+import { MessagingProvider } from './contexts/MessagingContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 
-// Routes where the sidebar should be shown (farmer/admin/brgy/lgu only)
 const SIDEBAR_ROUTES = [
   '/farmer/dashboard',
   '/farmer/listings',
@@ -49,7 +46,6 @@ const SIDEBAR_ROUTES = [
   '/farmer/upload',
   '/farmer/earnings',
   '/farmer/phenotyping',
-  '/buyer/dashboard',
   '/admin/dashboard',
   '/brgy/dashboard',
   '/brgy/listings',
@@ -63,24 +59,53 @@ const SIDEBAR_ROUTES = [
   '/buyer/cart',
   '/buyer/map',
   '/messages',
-  '/notifications'
+  '/notifications',
 ];
 
-// Main App Component
+interface EditableProduct {
+  p_id?: string | number;
+  [key: string]: unknown;
+}
+
+interface LoginUserData {
+  id?: string | number;
+  first_name?: string;
+  last_name?: string;
+  onboarding_completed?: number | boolean;
+}
+
+const getHomeRoute = (role: string) => {
+  const normalized = role.toLowerCase();
+  if (normalized === 'farmer') return '/farmer/dashboard';
+  if (normalized === 'admin') return '/admin/dashboard';
+  if (normalized === 'brgy_official') return '/brgy/dashboard';
+  return '/buyer/marketplace';
+};
+
 const AppContent: React.FC = () => {
-  const [userType, setUserType] = useState<string>('buyer');
-  const [firstName, setFirstName] = useState<string>('');
-  const [lastName, setLastName] = useState<string>('');
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(true);
-  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
-  const location = useLocation();
-  const navigate = useNavigate();
+  const initialRole = localStorage.getItem('agrilink_role') || 'buyer';
+  const initialLoggedIn =
+    localStorage.getItem('agrilink_isLoggedIn') === 'true' ||
+    !!localStorage.getItem('agrilink_token') ||
+    !!localStorage.getItem('agrilink_id');
+  const initialOnboardingCompleted = localStorage.getItem('agrilink_onboarding_completed') === '1';
+
+  const [userType, setUserType] = useState<string>(initialRole);
+  const [firstName, setFirstName] = useState<string>(localStorage.getItem('agrilink_firstName') || '');
+  const [lastName, setLastName] = useState<string>(localStorage.getItem('agrilink_lastName') || '');
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(initialLoggedIn);
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(
+    initialLoggedIn &&
+      (initialRole.toLowerCase() === 'buyer' || initialRole.toLowerCase() === 'farmer') &&
+      !initialOnboardingCompleted
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState<boolean>(false);
   const [isEditProductModalOpen, setIsEditProductModalOpen] = useState<boolean>(false);
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [editingProduct, setEditingProduct] = useState<EditableProduct | null>(null);
 
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleOpenModal = () => setIsAddProductModalOpen(true);
@@ -89,15 +114,15 @@ const AppContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const handleOpenEditModal = (event: any) => {
-      setEditingProduct(event.detail || null);
+    const handleOpenEditModal = (event: Event) => {
+      const customEvent = event as CustomEvent<EditableProduct>;
+      setEditingProduct(customEvent.detail || null);
       setIsEditProductModalOpen(true);
     };
     window.addEventListener('open-edit-product', handleOpenEditModal as EventListener);
     return () => window.removeEventListener('open-edit-product', handleOpenEditModal as EventListener);
   }, []);
 
-  // 📝 Dynamic Page Titles
   useEffect(() => {
     const routeTitles: { [key: string]: string } = {
       '/': 'AgriLink | Fresh Farm Produce',
@@ -105,7 +130,7 @@ const AppContent: React.FC = () => {
       '/farmer/dashboard': 'Farmer Dashboard | AgriLink',
       '/farmer/listings': 'My Listings | AgriLink',
       '/farmer/orders': 'Farmer Orders | AgriLink',
-      '/buyer/dashboard': 'Dashboard | AgriLink',
+      '/buyer/dashboard': 'My Profile | AgriLink',
       '/farmer/upload': 'Upload Product | AgriLink',
       '/admin/dashboard': 'Admin Dashboard | AgriLink',
       '/brgy/dashboard': 'Barangay Dashboard | AgriLink',
@@ -127,33 +152,11 @@ const AppContent: React.FC = () => {
       '/about': 'About Us | AgriLink',
     };
 
-    const currentTitle = routeTitles[location.pathname] || 'AgriLink';
-    document.title = currentTitle;
-  }, [location]);
-
-  const sidebarVisibleRoles = ['farmer', 'admin', 'brgy_official'];
-  const showSidebar = isLoggedIn && sidebarVisibleRoles.includes(userType.toLowerCase()) && SIDEBAR_ROUTES.includes(location.pathname);
-
-  useEffect(() => {
-    const savedRole = localStorage.getItem('agrilink_role');
-    const savedLoggedIn = localStorage.getItem('agrilink_isLoggedIn');
-
-    if (savedLoggedIn === 'true' && savedRole) {
-      setUserType(savedRole);
-      setFirstName(localStorage.getItem('agrilink_firstName') || '');
-      setLastName(localStorage.getItem('agrilink_lastName') || '');
-      setIsLoggedIn(true);
-      const onboardingStatus = localStorage.getItem('agrilink_onboarding_completed');
-      setOnboardingCompleted(onboardingStatus === '1');
-      if ((savedRole.toLowerCase() === 'buyer' || savedRole.toLowerCase() === 'farmer') && onboardingStatus !== '1') {
-        setShowOnboarding(true);
-      }
-    }
-  }, []);
+    document.title = routeTitles[location.pathname] || 'AgriLink';
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleCompletion = () => {
-      setOnboardingCompleted(true);
       setShowOnboarding(false);
     };
 
@@ -161,7 +164,7 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('agrilink-onboarding-completed', handleCompletion);
   }, []);
 
-  const handleLogin = (role: string, userData?: any, token?: string) => {
+  const handleLogin = (role: string, userData?: LoginUserData, token?: string) => {
     const sanitizedRole = role.toLowerCase();
     setUserType(sanitizedRole);
     setIsLoggedIn(true);
@@ -175,12 +178,11 @@ const AppContent: React.FC = () => {
       setLastName(userData.last_name || '');
       localStorage.setItem('agrilink_firstName', userData.first_name || '');
       localStorage.setItem('agrilink_lastName', userData.last_name || '');
-      localStorage.setItem('agrilink_id', userData.id || '');
-      
+      localStorage.setItem('agrilink_id', String(userData.id || ''));
+
       const onboardingStatus = userData.onboarding_completed === 1;
-      setOnboardingCompleted(onboardingStatus);
       localStorage.setItem('agrilink_onboarding_completed', onboardingStatus ? '1' : '0');
-      
+
       if ((sanitizedRole === 'buyer' || sanitizedRole === 'farmer') && !onboardingStatus) {
         setShowOnboarding(true);
       }
@@ -188,6 +190,7 @@ const AppContent: React.FC = () => {
 
     localStorage.setItem('agrilink_role', sanitizedRole);
     localStorage.setItem('agrilink_isLoggedIn', 'true');
+    window.dispatchEvent(new Event('agrilink-auth-changed'));
   };
 
   const handleLogout = () => {
@@ -204,52 +207,33 @@ const AppContent: React.FC = () => {
     localStorage.removeItem('agrilink_onboarding_completed');
     setShowOnboarding(false);
     navigate('/login');
+    window.dispatchEvent(new Event('agrilink-auth-changed'));
   };
 
-  // 🔒 RBAC Guard Component
-  const RoleGuard = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: string[] }) => {
-    if (!isLoggedIn) return <LoginPage onLogin={handleLogin} isLoggedIn={isLoggedIn} userType={userType} />;
-    if (!allowedRoles.includes(userType.toLowerCase())) {
-      const dashMap: any = {
-        'farmer': '/farmer/dashboard',
-        'admin': '/admin/dashboard',
-        'brgy_official': '/brgy/dashboard',
-        'buyer': '/buyer/marketplace'
-      };
-      navigate(dashMap[userType.toLowerCase()] || '/');
-      return null;
-    }
-    return <>{children}</>;
-  };
+  const homeRoute = getHomeRoute(userType);
+  const hasRole = (allowedRoles: string[]) => allowedRoles.includes(userType.toLowerCase());
 
-  // 🔒 Guest Guard Component (Prevent logged-in users from accessing industrial pages)
-  const GuestGuard = ({ children }: { children: React.ReactNode }) => {
-    if (isLoggedIn) {
-      const dashMap: any = {
-        'farmer': '/farmer/dashboard',
-        'admin': '/admin/dashboard',
-        'brgy_official': '/brgy/dashboard',
-        'buyer': '/buyer/marketplace'
-      };
-      navigate(dashMap[userType.toLowerCase()] || '/');
-      return null;
-    }
-    return <>{children}</>;
-  };
+  const sidebarVisibleRoles = ['farmer', 'admin', 'brgy_official'];
+  const showSidebar =
+    isLoggedIn &&
+    sidebarVisibleRoles.includes(userType.toLowerCase()) &&
+    SIDEBAR_ROUTES.includes(location.pathname);
 
   return (
     <div className="min-h-screen bg-white flex overflow-x-hidden">
       <ToastContainer />
+
       {showOnboarding && (
-        <OnboardingModal 
+        <OnboardingModal
           isOpen={showOnboarding}
           onClose={() => setShowOnboarding(false)}
           userId={localStorage.getItem('agrilink_id') || ''}
           userName={firstName}
           userType={userType}
-          onComplete={() => setOnboardingCompleted(true)}
+          onComplete={() => setShowOnboarding(false)}
         />
       )}
+
       {showSidebar && (
         <Sidebar
           userType={userType}
@@ -262,8 +246,7 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${showSidebar ? (sidebarCollapsed ? 'md:ml-20' : 'md:ml-64') : ''
-        }`}>
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${showSidebar ? (sidebarCollapsed ? 'md:ml-20' : 'md:ml-64') : ''}`}>
         {!showSidebar && (
           <Navbar
             currentPage={location.pathname}
@@ -276,73 +259,67 @@ const AppContent: React.FC = () => {
           />
         )}
 
-
         <main className={`flex-1 ${!showSidebar ? 'pt-20' : ''}`}>
           <RouteTransition>
             <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/" element={isLoggedIn ? <Navigate to={homeRoute} replace /> : <LandingPage />} />
               <Route path="/about" element={<AboutPage />} />
-              <Route path="/login" element={<GuestGuard><LoginPage onLogin={handleLogin} isLoggedIn={isLoggedIn} userType={userType} /></GuestGuard>} />
-              <Route path="/register" element={<GuestGuard><RegisterPage onLogin={handleLogin} /></GuestGuard>} />
+              <Route
+                path="/login"
+                element={
+                  isLoggedIn ? <Navigate to={homeRoute} replace /> : <LoginPage onLogin={handleLogin} isLoggedIn={isLoggedIn} userType={userType} />
+                }
+              />
+              <Route path="/register" element={isLoggedIn ? <Navigate to={homeRoute} replace /> : <RegisterPage onLogin={handleLogin} />} />
 
-              {/* Protected-for-all Routes */}
-              <Route path="/profile" element={isLoggedIn ? <ProfilePage userType={userType} /> : <LoginPage onLogin={handleLogin} isLoggedIn={isLoggedIn} userType={userType} />} />
-              <Route path="/messages" element={isLoggedIn ? <MessagesPage userType={userType} /> : <LoginPage onLogin={handleLogin} isLoggedIn={isLoggedIn} userType={userType} />} />
-              <Route path="/notifications" element={isLoggedIn ? <NotificationsPage userType={userType} /> : <LoginPage onLogin={handleLogin} isLoggedIn={isLoggedIn} userType={userType} />} />
+              <Route path="/profile" element={isLoggedIn ? <ProfilePage /> : <Navigate to="/login" replace />} />
+              <Route path="/messages" element={isLoggedIn ? <MessagesPage userType={userType} /> : <Navigate to="/login" replace />} />
+              <Route path="/notifications" element={isLoggedIn ? <NotificationsPage userType={userType} /> : <Navigate to="/login" replace />} />
 
-              {/* Farmer Routes */}
-              <Route path="/farmer/dashboard" element={<RoleGuard allowedRoles={['farmer']}><FarmerDashboard /></RoleGuard>} />
-              <Route path="/farmer/listings" element={<RoleGuard allowedRoles={['farmer']}><FarmerListingsPage /></RoleGuard>} />
-              <Route path="/farmer/orders" element={<RoleGuard allowedRoles={['farmer']}><FarmerOrdersPage /></RoleGuard>} />
-              <Route path="/farmer/upload" element={<RoleGuard allowedRoles={['farmer']}><ProductUploadPage /></RoleGuard>} />
-              <Route path="/farmer/earnings" element={<RoleGuard allowedRoles={['farmer']}><FarmerEarningsPage /></RoleGuard>} />
-              <Route path="/farmer/phenotyping" element={<RoleGuard allowedRoles={['farmer']}><FarmerPhenotypingPage /></RoleGuard>} />
-              <Route path="/farmer/edit-product/:id" element={<RoleGuard allowedRoles={['farmer']}><EditProductModalRoute /></RoleGuard>} />
+              <Route path="/farmer/dashboard" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['farmer']) ? <FarmerDashboard /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/farmer/listings" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['farmer']) ? <FarmerListingsPage /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/farmer/orders" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['farmer']) ? <FarmerOrdersPage /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/farmer/upload" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['farmer']) ? <ProductUploadPage /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/farmer/earnings" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['farmer']) ? <FarmerEarningsPage /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/farmer/phenotyping" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['farmer']) ? <FarmerPhenotypingPage /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/farmer/edit-product/:id" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['farmer']) ? <EditProductModalRoute /> : <Navigate to={homeRoute} replace />} />
 
-              {/* Buyer Routes */}
-              <Route path="/buyer/dashboard" element={<RoleGuard allowedRoles={['buyer']}><BuyerDashboard /></RoleGuard>} />
+              <Route path="/buyer/dashboard" element={<Navigate to="/profile" replace />} />
               <Route path="/buyer/marketplace" element={<MarketplacePage />} />
               <Route path="/buyer/product/:id" element={<ProductDetailPage />} />
-              <Route path="/buyer/cart" element={<RoleGuard allowedRoles={['buyer']}><CartPage /></RoleGuard>} />
-              <Route path="/buyer/checkout/:id" element={<RoleGuard allowedRoles={['buyer']}><CheckoutPage /></RoleGuard>} />
+              <Route path="/buyer/cart" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['buyer']) ? <CartPage /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/buyer/checkout/:id" element={<Navigate to="/profile?tab=market" replace />} />
               <Route path="/buyer/map" element={<MapPage />} />
 
-              {/* Admin Routes */}
-              <Route path="/admin/dashboard" element={<RoleGuard allowedRoles={['admin']}><AdminDashboard /></RoleGuard>} />
-              <Route path="/admin/users" element={<RoleGuard allowedRoles={['admin', 'brgy_official']}><AdminUsersPage viewerRole={userType} /></RoleGuard>} />
-              <Route path="/admin/listings" element={<RoleGuard allowedRoles={['admin']}><AdminListingsPage /></RoleGuard>} />
-              <Route path="/admin/orders" element={<RoleGuard allowedRoles={['admin']}><AdminOrdersPage /></RoleGuard>} />
-              <Route path="/logs" element={<RoleGuard allowedRoles={['admin']}><LogsPage /></RoleGuard>} />
+              <Route path="/admin/dashboard" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['admin']) ? <AdminDashboard /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/admin/users" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['admin', 'brgy_official']) ? <AdminUsersPage viewerRole={userType} /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/admin/listings" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['admin']) ? <AdminListingsPage /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/admin/orders" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['admin']) ? <AdminOrdersPage /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/logs" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['admin']) ? <LogsPage /> : <Navigate to={homeRoute} replace />} />
 
-              {/* Brgy Routes */}
-              <Route path="/brgy/dashboard" element={<RoleGuard allowedRoles={['brgy_official']}><BrgyDashboard /></RoleGuard>} />
-              <Route path="/brgy/listings" element={<RoleGuard allowedRoles={['brgy_official']}><BrgyListingsPage /></RoleGuard>} />
-              <Route path="/brgy/award-badge" element={<RoleGuard allowedRoles={['brgy_official']}><BrgyAwardBadgePage /></RoleGuard>} />
+              <Route path="/brgy/dashboard" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['brgy_official']) ? <BrgyDashboard /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/brgy/listings" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['brgy_official']) ? <BrgyListingsPage /> : <Navigate to={homeRoute} replace />} />
+              <Route path="/brgy/award-badge" element={!isLoggedIn ? <Navigate to="/login" replace /> : hasRole(['brgy_official']) ? <BrgyAwardBadgePage /> : <Navigate to={homeRoute} replace />} />
             </Routes>
           </RouteTransition>
         </main>
 
-
-        {/* Footer - Only show if sidebar is NOT shown for a cleaner dashboard view */}
         {!showSidebar && (
           <footer className="bg-green-800 text-white py-12">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
                 <div>
                   <div className="flex items-center justify-center md:justify-start mb-4">
-                    <img
-                      src="/src/assets/logo/AgriLinkWHITE.png"
-                      alt="AgriLink Logo"
-                      className="w-24 h-24 object-contain"
-                    />
+                    <img src="/src/assets/logo/AgriLinkWHITE.png" alt="AgriLink Logo" className="w-24 h-24 object-contain" />
                   </div>
                   <p className="text-green-100">Connecting farmers and communities for fresh, sustainable produce.</p>
                 </div>
                 <div>
                   <h4 className="font-bold text-lg mb-4">Quick Links</h4>
                   <ul className="space-y-2 text-green-100">
-                    <li><button onClick={() => navigate('/about')} className="hover:text-white transition-colors cursor-pointer">About Us</button></li>
+                    <li>
+                      <button onClick={() => navigate('/about')} className="hover:text-white transition-colors cursor-pointer">About Us</button>
+                    </li>
                     <li><a href="#" className="hover:text-white transition-colors">How It Works</a></li>
                     <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
                   </ul>
@@ -354,7 +331,7 @@ const AppContent: React.FC = () => {
                 </div>
               </div>
               <div className="border-t border-green-600 mt-8 pt-8 text-center text-green-100">
-                <p>© 2026 AgriLink. All rights reserved. 🌱</p>
+                <p>© 2026 AgriLink. All rights reserved.</p>
               </div>
             </div>
           </footer>
@@ -362,7 +339,7 @@ const AppContent: React.FC = () => {
       </div>
 
       <ScrollToTopButton />
-      {/* 🚀 Global Farmer Modals */}
+
       {userType.toLowerCase() === 'farmer' && (
         <>
           <AddProductModal
@@ -390,7 +367,6 @@ const AppContent: React.FC = () => {
   );
 };
 
-// 🚀 Standalone Scroll To Top Component to prevent re-renders
 const ScrollToTopButton: React.FC = () => {
   const [show, setShow] = useState(false);
 
@@ -418,13 +394,17 @@ const ScrollToTopButton: React.FC = () => {
   );
 };
 
-// Main App Component with Router
 const App: React.FC = () => {
   return (
     <Router>
-      <AppContent />
+      <NotificationProvider>
+        <MessagingProvider>
+          <AppContent />
+        </MessagingProvider>
+      </NotificationProvider>
     </Router>
   );
 };
 
 export default App;
+

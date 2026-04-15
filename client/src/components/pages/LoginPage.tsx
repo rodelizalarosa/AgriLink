@@ -12,10 +12,10 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
   React.useEffect(() => {
     if (isLoggedIn && userType) {
       const dashMap: any = {
-        'farmer': '/farmer-dashboard',
-        'admin': '/admin-dashboard',
-        'brgy_official': '/brgy-dashboard',
-        'buyer': '/marketplace'
+        'farmer': '/farmer/dashboard',
+        'admin': '/admin/dashboard',
+        'brgy_official': '/brgy/dashboard',
+        'buyer': '/buyer/marketplace'
       };
       navigate(dashMap[userType.toLowerCase()] || '/');
     }
@@ -35,6 +35,9 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
     const newErrors: Partial<LoginFormData> = {};
     if (!formData.email) newErrors.email = 'Email is required' as any;
     if (!formData.password) newErrors.password = 'Password is required' as any;
+    if (formData.password && formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters' as any;
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -55,11 +58,21 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
       const data = await response.json();
 
       if (!response.ok) {
-        const isNotRegistered = data.message && (data.message === 'You are not registered' || data.message.toLowerCase().includes('user not found'));
+        const rawMessage = data?.message || 'Login failed';
+        const lower = String(rawMessage).toLowerCase();
+        const isNotRegistered = lower === 'you are not registered' || lower.includes('user not found') || lower.includes('not registered');
+        const isPasswordError = lower.includes('invalid password') || lower.includes('password');
         const message = isNotRegistered ? 'You are not registered' : (data.message || 'Login failed');
-        toast.error(message);
-        if (!isNotRegistered) setErrors({ email: message } as any);
-        else setErrors({});
+        if (!isPasswordError) {
+          toast.error(message);
+        }
+        if (isNotRegistered) {
+          setErrors({ email: message } as any);
+        } else if (isPasswordError) {
+          setErrors({ password: message } as any);
+        } else {
+          setErrors({ email: message } as any);
+        }
         return;
       }
 
@@ -172,6 +185,7 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
                   </button>
                 </div>
                 {errors.password && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.password}</p>}
+                {!errors.password && <p className="text-gray-400 text-xs mt-1 font-medium">Minimum 8 characters</p>}
               </div>
 
               <div className="flex items-center justify-between">
@@ -216,14 +230,14 @@ export const LoginPage: React.FC<LoginPageProps & { isLoggedIn?: boolean, userTy
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => { onLogin('brgy_official', { id: 998, first_name: 'Brgy', last_name: 'Official' }); navigate('/brgy-dashboard'); }}
+                  onClick={() => { onLogin('brgy_official', { id: 998, first_name: 'Brgy', last_name: 'Official' }); navigate('/brgy/dashboard'); }}
                   className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all border border-emerald-100"
                 >
                   Brgy Official
                 </button>
                 <button
                   type="button"
-                  onClick={() => { onLogin('admin', { id: 999, first_name: 'System', last_name: 'Admin' }); navigate('/admin-dashboard'); }}
+                  onClick={() => { onLogin('admin', { id: 999, first_name: 'System', last_name: 'Admin' }); navigate('/admin/dashboard'); }}
                   className="px-4 py-2 bg-purple-50 text-purple-700 rounded-xl text-xs font-bold hover:bg-purple-100 transition-all border border-purple-100"
                 >
                   Admin

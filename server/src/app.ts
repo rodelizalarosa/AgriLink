@@ -4,6 +4,10 @@ import { productRoutes } from './routes/productRoutes';
 import { purchaseRoutes } from './routes/purchaseRoutes';
 import phenotypingRoutes from './routes/phenotypingRoutes';
 import { userRoutes } from './routes/userRoutes';
+import favoritesRoutes from './routes/favoritesRoutes';
+import messageRoutes from './routes/messageRoutes';
+import notificationRoutes from './routes/notificationRoutes';
+import reviewRoutes from './routes/reviewRoutes';
 
 const app = express();
 
@@ -50,7 +54,7 @@ app.get('/', (req: Request, res: Response) => {
     res.json({
         message: 'AgriLink API - RECOGNIZING EDITS v2',
         status: 'Online',
-        port: process.env.PORT || 5001
+        port: process.env.PORT || 5002
     });
 });
 
@@ -67,6 +71,10 @@ app.use('/api/products', productRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/phenotyping', phenotypingRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/favorites', favoritesRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // --- GLOBAL ERROR HANDLER ---
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

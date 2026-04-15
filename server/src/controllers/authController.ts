@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { registerUser, loginUser } from '../services/authService';
+import { registerUser, loginUser, updatePassword } from '../services/authService';
 import jwt from 'jsonwebtoken';
 import { db } from '../database/database';
 import { getVerificationSuccessTemplate, getVerificationExpiredTemplate } from '../templates/webTemplates';
@@ -22,6 +22,30 @@ export const registerController = async (req: Request, res: Response) => {
     }
     return res.status(500).json({ message: err.message || 'Service temporarily unavailable. Please try again later.' });
   }
+};
+
+export const updatePasswordController = async (req: Request, res: Response) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const authId = (req as any).user.auth_id;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ message: 'Current and new passwords are required' });
+        }
+
+        const result = await updatePassword(authId, currentPassword, newPassword);
+        return res.status(200).json(result);
+    } catch (err: any) {
+        console.error(err);
+        const message = err.message || 'Error updating password';
+        if (message === 'Current password is incorrect') {
+            return res.status(401).json({ message });
+        }
+        if (message === 'User not found') {
+            return res.status(404).json({ message });
+        }
+        return res.status(500).json({ message });
+    }
 };
 
 export const checkEmailController = async (req: Request, res: Response) => {

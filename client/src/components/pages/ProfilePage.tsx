@@ -1,1501 +1,1185 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
-import Modal from '../ui/Modal';
-import MapBoxMap, { Marker } from 'react-map-gl/mapbox';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import customMapStyle from '../../assets/agrilink-map-style.json';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Camera, 
-  Save, 
-  Shield, 
-  Bell, 
-  Map, 
-  Truck, 
-  Sprout,
-  ArrowRight,
-  Package,
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Bell,
+  Camera,
   Clock,
-  Eye,
-  CheckCircle,
-  TrendingUp,
-  Wallet,
-  ShoppingBag,
-  Landmark,
-  ShieldCheck,
-  History,
-  LayoutDashboard
+  Globe2,
+  Lock,
+  LogOut,
+  Mail,
+  MapPin,
+  Phone,
+  Trash2,
+  SlidersHorizontal,
+  User as UserIcon,
+  Heart,
+  ShoppingCart,
+  Star,
 } from 'lucide-react';
-import { sampleProducts } from '../../data';
-import DashboardCard from '../ui/DashboardCard';
-import type { UserProfile } from '../../types';
-import { API_BASE_URL } from '../../api/apiConfig';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { API_BASE_URL, getFullImageUrl } from '../../api/apiConfig';
+import { useToast } from '../ui/Toast';
+import LogoutConfirmationModal from '../ui/LogoutConfirmationModal';
+import ReviewModal from '../modals/ReviewModal';
+import ProductCard from '../ui/ProductCard';
+import type { UserProfile, Product } from '../../types';
 
-interface ProfilePageProps {
-  userType: string;
-}
-const ProfilePage: React.FC<ProfilePageProps> = ({ userType }) => {
-  const [searchParams] = useSearchParams();
+type OrderRow = {
+  req_id: number;
+  product_id?: number | string;
+  req_status: string;
+  req_date?: string;
+  created_at?: string;
+  quantity: number;
+  p_name?: string;
+  p_price?: number;
+  p_image?: string;
+  p_id?: number | string;
+  farmer_first?: string;
+  farmer_last?: string;
+  buyer_first?: string;
+  buyer_last?: string;
+};
+
+const statusClasses: Record<string, string> = {
+  pending: 'bg-amber-100 text-amber-700 border-amber-200',
+  confirmed: 'bg-blue-100 text-blue-700 border-blue-200',
+  processing: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  completed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  cancelled: 'bg-rose-100 text-rose-700 border-rose-200',
+  canceled: 'bg-rose-100 text-rose-700 border-rose-200',
+};
+
+const inputClass =
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100';
+
+const sectionClass =
+  'rounded-2xl border border-slate-200 bg-white shadow-sm';
+
+type ToggleSwitchProps = {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  ariaLabel: string;
+};
+
+const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ checked, onChange, ariaLabel }) => {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+        checked ? 'bg-emerald-600' : 'bg-slate-300'
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  );
+};
+
+const parseMaybeNumber = (value: unknown): number | undefined => {
+  if (value === null || value === undefined || value === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const isReadOnly = !!id; // if an ID is passed in the URL, viewing another profile
-  
-  const isNewUser = searchParams.get('setup') === 'true';
-  const [showSetupModal, setShowSetupModal] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+  const toast = useToast();
 
-  const currentUserId = localStorage.getItem('agrilink_id');
-  const targetUserId = id || currentUserId;
+  const [activeSection, setActiveSection] = useState(() => {
+    const tab = (searchParams.get('tab') || 'info').toLowerCase();
+    return tab === 'farm' ? 'info' : tab;
+  });
+  const [loading, setLoading] = useState(true);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [profileImageUploading, setProfileImageUploading] = useState(false);
+  const [farmImageUploading, setFarmImageUploading] = useState(false);
+  const [alertsSaving, setAlertsSaving] = useState(false);
+  const [removingOrderId, setRemovingOrderId] = useState<number | null>(null);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [selectedOrderForReview, setSelectedOrderForReview] = useState<OrderRow | null>(null);
+  const [wishlist, setWishlist] = useState<Product[]>([]);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+
+  const token = localStorage.getItem('agrilink_token');
+  const userId = localStorage.getItem('agrilink_id') || localStorage.getItem('agrilink_userId');
+  const storedRole = (
+    localStorage.getItem('agrilink_role') ||
+    localStorage.getItem('agrilink_userType') ||
+    'buyer'
+  ).toLowerCase();
 
   const [profile, setProfile] = useState<UserProfile>({
-    id: targetUserId || '0',
-    firstName: localStorage.getItem('agrilink_firstName') || '',
-    lastName: localStorage.getItem('agrilink_lastName') || '',
+    id: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     address: '',
     city: '',
     province: '',
     zipCode: '',
-    userType: userType as any,
-    farmAddress: '',
-    farmCity: '',
-    farmProvince: '',
-    farmZipCode: '',
+    userType: 'buyer',
+    bio: '',
+    farmImage: '',
     farmAddressSameAsHome: true,
   });
 
-  const [viewState, setViewState] = useState({
-    longitude: 123.8854,
-    latitude: 10.3157,
-    zoom: 13
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
+  const [orderSort, setOrderSort] = useState<'latest' | 'oldest'>('latest');
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'personal' | 'security' | 'role'>('dashboard');
-  const [isEditing, setIsEditing] = useState(false);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [notificationSettings, setNotificationSettings] = useState({
+    orders: true,
+    messages: true,
+  });
+  const [appSettings, setAppSettings] = useState({
+    language: 'en-PH',
+    compactOrders: false,
+  });
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  const isFarmer = (profile.userType || storedRole) === 'farmer';
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!targetUserId) return;
+    if (!userId) return;
+    const stored = localStorage.getItem(`profile_alerts_${userId}`);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      setNotificationSettings((prev) => ({
+        ...prev,
+        orders: !!parsed.orders,
+        messages: !!parsed.messages,
+      }));
+    } catch {
+      // ignore malformed local settings
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const stored = localStorage.getItem(`profile_settings_${userId}`);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      setAppSettings((prev) => ({
+        ...prev,
+        language: String(parsed.language || prev.language),
+        compactOrders: !!parsed.compactOrders,
+      }));
+    } catch {
+      // ignore malformed local settings
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        const token = localStorage.getItem('agrilink_token');
+        if (!token || !userId) {
+          navigate('/login');
+          return;
+        }
+
         const [profileRes, ordersRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/users/${targetUserId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+          fetch(`${API_BASE_URL}/users/${userId}`, {
+            headers: { Authorization: `Bearer ${token}` },
           }),
-          userType === 'buyer' ? fetch(`${API_BASE_URL}/purchases/buyer/${targetUserId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }) : Promise.resolve(null)
+          fetch(`${API_BASE_URL}/purchases/${storedRole === 'farmer' ? 'farmer' : 'buyer'}/${userId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
         ]);
 
-        if (!profileRes.ok) throw new Error('Failed to fetch profile');
-        const userData = await profileRes.json();
-        
-        setProfile({
-          id: userData.id.toString(),
-          firstName: userData.first_name,
-          lastName: userData.last_name,
-          email: userData.email,
-          phone: userData.phone || '',
-          address: userData.address || '',
-          city: userData.city || '',
-          province: userData.province || '',
-          zipCode: userData.zip_code || '',
-          userType: userData.role,
-          profileImage: userData.profile_image || userData.image_path || '/mongg.jpg',
-          bio: userData.bio || 'Passionate about sustainable agriculture and community-driven food systems.',
-          farmAddress: userData.farm_address || '',
-          farmCity: userData.farm_city || '',
-          farmProvince: userData.farm_province || '',
-          farmZipCode: userData.farm_zip_code || '',
-          farmLatitude: userData.farm_latitude ? parseFloat(userData.farm_latitude) : undefined,
-          farmLongitude: userData.farm_longitude ? parseFloat(userData.farm_longitude) : undefined,
-          farmAddressSameAsHome: userData.farm_address_same_as_home === 1 || userData.farm_address_same_as_home === true,
-        });
+        if (profileRes.ok) {
+          const data = await profileRes.json();
+          const fallbackFirstName = localStorage.getItem('agrilink_firstName') || '';
+          const fallbackLastName = localStorage.getItem('agrilink_lastName') || '';
+          setProfile({
+            id: String(data.id || ''),
+            firstName: data.first_name || fallbackFirstName,
+            lastName: data.last_name || fallbackLastName,
+            email: data.email || '',
+            phone: data.phone || '',
+            address: data.address || '',
+            city: data.city || '',
+            province: data.province || '',
+            zipCode: data.zip_code || '',
+            latitude: parseMaybeNumber(data.latitude),
+            longitude: parseMaybeNumber(data.longitude),
+            userType: (data.role || storedRole || 'buyer') as UserProfile['userType'],
+            bio: data.bio || '',
+            profileImage: data.profile_image || data.image_path || '',
+            farmName: data.farm_name || '',
+            farmAddress: data.farm_address || '',
+            farmCity: data.farm_city || '',
+            farmProvince: data.farm_province || '',
+            farmZipCode: data.farm_zip_code || '',
+            farmLatitude: parseMaybeNumber(data.farm_latitude),
+            farmLongitude: parseMaybeNumber(data.farm_longitude),
+            farmAddressSameAsHome: data.farm_address_same_as_home !== 0,
+            farmImage: data.farm_image || '',
+          });
+        } else {
+          toast.error('Failed to load profile data.');
+        }
 
-        if (ordersRes && ordersRes.ok) {
-          const ordersData = await ordersRes.json();
-          setOrders(ordersData.orders || []);
+        if (ordersRes.ok) {
+          const data = await ordersRes.json();
+          setOrders(Array.isArray(data.orders) ? data.orders : []);
         }
-        
-        if (userData.latitude && userData.longitude) {
-          setViewState(prev => ({
-            ...prev,
-            latitude: parseFloat(userData.latitude),
-            longitude: parseFloat(userData.longitude)
-          }));
-        }
-      } catch (err) {
-        console.error('Error fetching profile:', err);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        toast.error('Unable to load profile at the moment.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfile();
-    if (isNewUser) {
-      setShowSetupModal(true);
-    }
-  }, [targetUserId, isNewUser]);
+    fetchData();
+  }, [navigate, storedRole, token, userId, toast]);
 
-  const handleSaveSetup = async () => {
+  useEffect(() => {
+    if (activeSection === 'market' && !isFarmer) {
+      fetchWishlist();
+    }
+  }, [activeSection, isFarmer]);
+
+  const fetchWishlist = async () => {
+    if (!token) return;
+    setWishlistLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/users/${targetUserId}/onboarding`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: profile.phone,
-          address: profile.address,
-          city: profile.city,
-          province: profile.province,
-          zip_code: profile.zipCode,
-          latitude: profile.latitude,
-          longitude: profile.longitude,
-          farm_address: profile.farmAddress,
-          farm_city: profile.farmCity,
-          farm_province: profile.farmProvince,
-          farm_zip_code: profile.farmZipCode,
-          farm_latitude: profile.farmLatitude,
-          farm_longitude: profile.farmLongitude,
-          farm_address_same_as_home: profile.farmAddressSameAsHome
-        })
+      const res = await fetch(`${API_BASE_URL}/favorites`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const raw = Array.isArray(data.favorites) ? data.favorites : [];
+        const mapped: Product[] = raw.map((p: any) => ({
+          id: p.p_id || p.product_id,
+          name: p.p_name || 'Unnamed Product',
+          price: parseFloat(p.p_price) || 0,
+          unit: p.p_unit || 'unit',
+          seller: p.seller_first_name ? `${p.seller_first_name} ${p.seller_last_name || ''}` : 'Local Farm',
+          location: p.seller_city || 'Local Farm',
+          stock: parseFloat(p.p_quantity) || 0,
+          image: p.p_image || '',
+          category: p.cat_name || 'Others',
+          sellerUserId: Number(p.sellerUserId || 0),
+        }));
+        setWishlist(mapped);
+      }
+    } catch {
+      console.error('Failed to fetch wishlist');
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
+  const toggleFavorite = async (productId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!token) {
+      toast.info('Please sign in.');
+      return;
+    }
+    const isFav = wishlist.some((p) => Number(p.id) === productId);
+    try {
+      const method = isFav ? 'DELETE' : 'POST';
+      const url = isFav ? `${API_BASE_URL}/favorites/${productId}` : `${API_BASE_URL}/favorites`;
+      const body = isFav ? undefined : JSON.stringify({ productId });
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body,
       });
 
-      if (response.ok) {
-        localStorage.setItem('agrilink_onboarding_completed', '1');
-        // Dispatch custom event to notify App.tsx
-        window.dispatchEvent(new CustomEvent('agrilink-onboarding-completed'));
-        
-        setShowSetupModal(false);
-        navigate(profile.userType === 'farmer' ? '/farmer/dashboard' : '/marketplace');
-        toast.success('Profile setup complete!');
-      } else {
-        toast.error('Failed to save profile setup');
+      if (res.ok) {
+        if (isFav) {
+          setWishlist((prev) => prev.filter((p) => Number(p.id) !== productId));
+        } else {
+          fetchWishlist();
+        }
       }
-    } catch (err) {
-      console.error('Setup error:', err);
-      toast.error('Something went wrong. Please try again.');
+    } catch {
+      toast.error('Failed to update wishlist.');
     }
   };
 
-  // 🌍 Auto-Geocode Address for Setup Modal
-  useEffect(() => {
-    if (!showSetupModal || !profile.address || profile.address.length < 5) return;
-
-    const delayDebounceFn = setTimeout(async () => {
-      try {
-        const query = encodeURIComponent(`${profile.address}, ${profile.city}, ${profile.province}, Philippines`);
-        const token = import.meta.env.VITE_MAPBOX_TOKEN;
-        
-        if (!token) return;
-
-        const response = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${token}&limit=1&country=ph`
-        );
-        
-        const data = await response.json();
-        
-        if (data.features && data.features.length > 0) {
-          const [lng, lat] = data.features[0].center;
-          
-          setProfile(prev => ({
-            ...prev,
-            latitude: lat,
-            longitude: lng
-          }));
-          
-          setViewState(prev => ({
-            ...prev,
-            latitude: lat,
-            longitude: lng,
-            zoom: 15
-          }));
-        }
-      } catch (error) {
-        console.error('Geocoding error:', error);
-      }
-    }, 1500);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [profile.address, profile.city, profile.province, showSetupModal]);
-
-
-  // If reading only, override type to farmer (for demo purposes)
-  const effectiveUserType = isReadOnly ? 'farmer' : userType;
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setProfile(prev => ({ ...prev, [name]: value }));
+  const handleOpenReview = (order: OrderRow) => {
+    setSelectedOrderForReview(order);
+    setIsReviewModalOpen(true);
   };
 
-  const handleSave = async () => {
+  const confirmLogout = () => {
+    localStorage.removeItem('agrilink_role');
+    localStorage.removeItem('agrilink_isLoggedIn');
+    localStorage.removeItem('agrilink_token');
+    localStorage.removeItem('agrilink_id');
+    localStorage.removeItem('agrilink_firstName');
+    localStorage.removeItem('agrilink_lastName');
+    localStorage.removeItem('agrilink_onboarding_completed');
+    localStorage.removeItem('agrilink_userId');
+    window.dispatchEvent(new Event('agrilink-auth-changed'));
+    navigate('/login');
+  };
+
+  const orderStatuses = useMemo(() => {
+    const set = new Set<string>();
+    orders.forEach((o) => set.add((o.req_status || 'Unknown').trim()));
+    return ['all', ...Array.from(set)];
+  }, [orders]);
+
+  const filteredOrders = useMemo(() => {
+    const base = orders.filter((order) => {
+      if (orderStatusFilter === 'all') return true;
+      return (order.req_status || '').toLowerCase() === orderStatusFilter.toLowerCase();
+    });
+
+    return [...base].sort((a, b) => {
+      const aTime = new Date(a.req_date || a.created_at || 0).getTime();
+      const bTime = new Date(b.req_date || b.created_at || 0).getTime();
+      return orderSort === 'latest' ? bTime - aTime : aTime - bTime;
+    });
+  }, [orders, orderStatusFilter, orderSort]);
+
+  const buildProfilePayload = () => ({
+    first_name: profile.firstName,
+    last_name: profile.lastName,
+    phone: profile.phone,
+    address: profile.address,
+    city: profile.city,
+    province: profile.province,
+    zip_code: profile.zipCode,
+    latitude: profile.latitude,
+    longitude: profile.longitude,
+    bio: profile.bio,
+    farm_name: profile.farmName,
+    farm_address: profile.farmAddress,
+    farm_city: profile.farmCity,
+    farm_province: profile.farmProvince,
+    farm_zip_code: profile.farmZipCode,
+    farm_latitude: profile.farmLatitude,
+    farm_longitude: profile.farmLongitude,
+    farm_address_same_as_home: profile.farmAddressSameAsHome,
+  });
+
+  const handleSaveProfile = async () => {
+    if (!token || !userId) {
+      toast.error('Session expired. Please sign in again.');
+      navigate('/login');
+      return;
+    }
+
+    setSaveLoading(true);
     try {
-      const token = localStorage.getItem('agrilink_token');
-      const response = await fetch(`${API_BASE_URL}/users/${profile.id}/profile`, {
+      const form = new FormData();
+      const payload = buildProfilePayload() as Record<string, unknown>;
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value === undefined || value === null) {
+          form.append(key, '');
+        } else {
+          form.append(key, String(value));
+        }
+      });
+
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/profile`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: form,
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.message || 'Failed to save profile.');
+        return;
+      }
+
+      localStorage.setItem('agrilink_firstName', profile.firstName || '');
+      localStorage.setItem('agrilink_lastName', profile.lastName || '');
+      toast.success('Profile updated successfully.');
+    } catch {
+      toast.error('Network error while saving profile.');
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleSaveAlerts = async () => {
+    if (!userId) return;
+    setAlertsSaving(true);
+    try {
+      localStorage.setItem(`profile_alerts_${userId}`, JSON.stringify(notificationSettings));
+      toast.success('Alert preferences saved.');
+    } catch {
+      toast.error('Unable to save alert preferences.');
+    } finally {
+      setAlertsSaving(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!userId) return;
+    setSettingsSaving(true);
+    try {
+      localStorage.setItem(`profile_settings_${userId}`, JSON.stringify(appSettings));
+      toast.success('Settings saved.');
+    } catch {
+      toast.error('Unable to save settings.');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    const { currentPassword, newPassword, confirmPassword } = passwordData;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('Fill in all password fields.');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error('New password must be at least 8 characters.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords must match.');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          first_name: profile.firstName,
-          last_name: profile.lastName,
-          phone: profile.phone,
-          address: profile.address,
-          city: profile.city,
-          province: profile.province,
-          zip_code: profile.zipCode,
-          latitude: profile.latitude,
-          longitude: profile.longitude,
-          farm_address: profile.farmAddress,
-          farm_city: profile.farmCity,
-          farm_province: profile.farmProvince,
-          farm_zip_code: profile.farmZipCode,
-          farm_latitude: profile.farmLatitude,
-          farm_longitude: profile.farmLongitude,
-          farm_address_same_as_home: profile.farmAddressSameAsHome,
-        }),
+        body: JSON.stringify({ currentPassword, newPassword }),
       });
 
-      if (response.ok) {
-        setIsEditing(false);
-        alert('Profile updated successfully! 🌿');
-      } else {
-        alert('Failed to update profile. Please try again.');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.message || 'Error updating password.');
+        return;
       }
-    } catch (err) {
-      console.error('Error saving profile:', err);
-      alert('An error occurred while saving. Please try again.');
+
+      toast.success('Password updated successfully.');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch {
+      toast.error('Network error while updating password.');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
-  const renderDashboardContent = () => {
-    const isBuyer = profile.userType === 'buyer';
-    const isFarmer = profile.userType === 'farmer';
-
-    return (
-      <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tighter italic uppercase mb-2">
-            Account Overview<span className="text-[#5ba409]">.</span>
-          </h2>
-          <p className="text-gray-500 font-medium">Manage your activity and view your recent performance.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {isBuyer ? (
-            <>
-              <DashboardCard 
-                icon={ShoppingBag} 
-                title="Total Orders" 
-                value={orders.length.toString()} 
-                subtitle="Items purchased" 
-                color="#5ba409" 
-              />
-              <DashboardCard 
-                icon={Clock} 
-                title="Pending" 
-                value={orders.filter(o => o.req_status === 'Pending').length.toString()} 
-                subtitle="Awaiting confirmation" 
-                color="#FF9800" 
-              />
-              <DashboardCard 
-                icon={Wallet} 
-                title="Total Spent" 
-                value={`₱${orders.reduce((sum, o) => sum + (o.quantity * o.p_price), 0).toLocaleString()}`} 
-                subtitle="Lifetime investment" 
-                color="#2196F3" 
-              />
-            </>
-          ) : isFarmer ? (
-            <>
-              <DashboardCard 
-                icon={TrendingUp} 
-                title="Live Listings" 
-                value="12" 
-                subtitle="Active products" 
-                color="#5ba409" 
-              />
-              <DashboardCard 
-                icon={Landmark} 
-                title="Revenue" 
-                value="₱12.4k" 
-                subtitle="This month" 
-                color="#2196F3" 
-              />
-              <DashboardCard 
-                icon={ShieldCheck} 
-                title="Health" 
-                value="98%" 
-                subtitle="Fulfillment rate" 
-                color="#9C27B0" 
-              />
-            </>
-          ) : (
-            <div className="col-span-3 p-8 bg-gray-50 rounded-[2rem] text-center border-2 border-dashed border-gray-200">
-              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                <Shield className="w-8 h-8 text-[#5ba409]" />
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">Administrative Oversight</h3>
-              <p className="text-sm text-gray-500">You have access to global management tools across the AgriLink platform.</p>
-            </div>
-          )}
-        </div>
-
-        {isBuyer && orders.length > 0 && (
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-black text-gray-900 italic uppercase">Recent Activity</h3>
-              <button 
-                onClick={() => setActiveTab('role')}
-                className="text-[10px] font-black text-[#5ba409] uppercase tracking-widest hover:translate-x-1 transition-transform flex items-center gap-2"
-              >
-                View History <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {orders.slice(0, 3).map((order) => (
-                <div key={order.req_id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-[#5ba409]/10 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-[#5ba409] font-black italic">
-                      {order.p_name?.[0]}
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-900 text-sm leading-none mb-1">{order.p_name}</p>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{order.req_status} • {new Date(order.created_at).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  <p className="font-black text-gray-900 italic">₱{(order.quantity * order.p_price).toLocaleString()}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderRoleTabForBuyer = () => {
-    const processingOrders = orders.filter(o => o.req_status === 'Pending' || o.req_status === 'Processing');
-    const completedOrders = orders.filter(o => o.req_status === 'Completed' || o.req_status === 'Delivered');
-
-    return (
-      <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div>
-          <h3 className="text-2xl font-black text-gray-900 mb-6 flex items-center gap-3">
-            <Package className="w-7 h-7 text-[#5ba409]" />
-            Purchase History
-          </h3>
-          
-          <div className="space-y-8">
-            {/* Incoming Orders */}
-            <div>
-              <h4 className="font-bold text-gray-500 uppercase tracking-widest text-xs mb-4 flex items-center gap-2">
-                <Clock className="w-4 h-4" /> Incoming & Active
-              </h4>
-              <div className="space-y-4">
-                {processingOrders.length === 0 ? (
-                  <div className="p-8 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 text-gray-400 font-bold italic uppercase text-[10px] tracking-widest">
-                    No active orders currently
-                  </div>
-                ) : (
-                  processingOrders.map((order) => (
-                    <div key={order.req_id} className="bg-white p-5 rounded-2xl border-2 border-amber-100 shadow-sm flex flex-col md:flex-row gap-5 items-start md:items-center">
-                      <div className="w-16 h-16 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                        <Truck className="w-8 h-8 text-amber-500" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start mb-1">
-                          <h5 className="font-black text-gray-900 text-lg uppercase italic">{order.p_name}</h5>
-                          <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${order.req_status === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                            {order.req_status}
-                          </span>
-                        </div>
-                        <p className="text-sm font-bold text-gray-500 mb-1">Order #ORD-{order.req_id.toString().padStart(4, '0')} • Farm ID: {order.u_id}</p>
-                        <p className="text-sm text-gray-400">Date Started: <span className="text-gray-700 font-bold">{new Date(order.created_at).toLocaleDateString()}</span></p>
-                      </div>
-                      <div className="text-right shrink-0 min-w-[100px]">
-                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Total</p>
-                        <p className="text-2xl font-black text-gray-900">₱{(order.quantity * order.p_price).toLocaleString()}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Completed Orders */}
-            <div>
-              <h4 className="font-bold text-gray-500 uppercase tracking-widest text-xs mb-4 flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" /> Success History
-              </h4>
-              <div className="space-y-4">
-                {completedOrders.length === 0 ? (
-                  <div className="p-8 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 text-gray-400 font-bold italic uppercase text-[10px] tracking-widest">
-                    No completed purchases yet
-                  </div>
-                ) : (
-                  completedOrders.map((order) => (
-                    <div key={order.req_id} className="bg-gray-50 p-5 rounded-2xl border border-gray-100 hover:border-green-200 transition-colors flex flex-col md:flex-row gap-5 items-start md:items-center">
-                      <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                        <Package className="w-8 h-8 text-gray-400" />
-                      </div>
-                      <div className="flex-1 w-full">
-                        <div className="flex justify-between items-start mb-1">
-                          <h5 className="font-black text-gray-900 text-lg uppercase italic">{order.p_name}</h5>
-                          <span className="bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" /> {order.req_status === 'Delivered' ? 'Delivered' : 'Fulfilled'}
-                          </span>
-                        </div>
-                        <p className="text-sm font-bold text-gray-500 mb-1">Order #ORD-{order.req_id.toString().padStart(4, '0')} • Finalized on: {new Date(order.updated_at || order.created_at).toLocaleDateString()}</p>
-                      </div>
-                      <div className="text-right shrink-0 min-w-[100px] flex flex-col items-end w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-gray-200">
-                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1 hidden md:block">Total</p>
-                        <div className="flex justify-between md:block w-full">
-                          <span className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1 md:hidden">Total</span>
-                          <p className="text-xl font-black text-gray-900 mb-2">₱{(order.quantity * order.p_price).toLocaleString()}</p>
-                        </div>
-                        <button 
-                          onClick={() => navigate(`/product/${order.p_id}`)}
-                          className="text-xs font-black text-[#5ba409] hover:underline underline-offset-2 bg-green-50 px-4 py-2 rounded-xl"
-                        >
-                          Buy Again
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderRoleSpecificContent = () => {
-    if (profile.userType === 'farmer') {
-      const farmerProducts = sampleProducts.filter(p => isReadOnly ? p.seller === "Juan dela Cruz" : true).slice(0, 4);
-      
-      return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-            <Sprout className="w-6 h-6 mr-2 text-[#5ba409]" />
-            {isReadOnly ? 'Farm Information' : 'My Farm Information'}
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Farm Name</label>
-              <input
-                type="text"
-                name="farmName"
-                value={profile.farmName || 'Green Valley Organic Farm'}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Total Land Area</label>
-              <div className="relative">
-                <Map className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  name="farmSize"
-                  value={profile.farmSize || '5 Hectares'}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Delivery Range</label>
-              <div className="relative">
-                <Truck className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  name="deliveryRange"
-                  value={profile.deliveryRange || '25km'}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="pt-4 border-t border-gray-100">
-            <h4 className="font-bold text-gray-900 mb-3">{isReadOnly ? 'Listed Produce' : 'Primary Produce'}</h4>
-            
-            {isReadOnly ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {farmerProducts.map(p => (
-                  <div key={p.id} onClick={() => navigate(`/product/${p.id}`)} className="bg-white rounded-xl overflow-hidden border border-gray-100 cursor-pointer hover:border-[#5ba409] hover:shadow-lg transition-all group">
-                    <div className="h-24 overflow-hidden relative">
-                      <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                      <div className="absolute top-2 left-2 bg-white/90 px-2 py-0.5 rounded text-[10px] font-black">{p.category}</div>
-                    </div>
-                    <div className="p-3">
-                      <p className="font-bold text-gray-900 text-sm truncate">{p.name}</p>
-                      <p className="text-[#5ba409] font-black text-sm">₱{p.price}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {['Vegetables', 'Fruits', 'Organic Rice', 'Spices'].map(tag => (
-                  <span key={tag} className="bg-green-50 text-[#5ba409] px-3 py-1 rounded-full text-sm font-bold border border-green-100">
-                    {tag}
-                  </span>
-                ))}
-                <button className="text-gray-400 hover:text-[#5ba409] border-2 border-dashed border-gray-200 rounded-full px-3 py-0.5 text-sm font-bold transition-colors">
-                  + Add Category
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    } else if (profile.userType === 'buyer') {
-      return renderRoleTabForBuyer();
-    } else if (profile.userType === 'brgy_official') {
-      return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-           <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-            <MapPin className="w-6 h-6 mr-2 text-[#5ba409]" />
-            Barangay Jurisdiction
-          </h3>
-          <div className="bg-emerald-50 rounded-xl p-6">
-            <p className="text-emerald-800 font-bold mb-2">Assigned Barangay: San Jose</p>
-            <p className="text-sm text-emerald-600">You are responsible for managing farmer listings and coordinating local orders within this jurisdiction.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 border-2 border-gray-100 rounded-xl">
-              <p className="text-xs font-black text-gray-400 uppercase">Farmers Managed</p>
-              <p className="text-xl font-bold text-gray-900">42</p>
-            </div>
-            <div className="p-4 border-2 border-gray-100 rounded-xl">
-              <p className="text-xs font-black text-gray-400 uppercase">Active Listings</p>
-              <p className="text-xl font-bold text-gray-900">128</p>
-            </div>
-          </div>
-        </div>
-      );
-    } else if (profile.userType === 'lgu_official') {
-      return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-            <Shield className="w-6 h-6 mr-2 text-indigo-600" />
-            LGU Authorization
-          </h3>
-          <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
-            <p className="text-indigo-900 font-bold mb-2">Representative ID: LGU-MLY-2026-089</p>
-            <p className="text-sm text-indigo-700">Authorized to perform platform-wide moderation, listing validation, and inter-barangay coordination.</p>
-          </div>
-          <button className="w-full py-3 bg-white border-2 border-indigo-200 text-indigo-700 rounded-xl font-bold hover:bg-indigo-50 transition-all">
-            Update Security Credentials
-          </button>
-        </div>
-      );
-    } else {
-      return (
-        <div className="p-8 text-center bg-gray-50 rounded-2xl">
-          <Shield className="w-16 h-16 text-[#5ba409] mx-auto mb-4 opacity-50" />
-          <h3 className="text-xl font-bold text-gray-900 mb-2">System Administrator</h3>
-          <p className="text-gray-600">You have full access to system management and user oversight tools.</p>
-        </div>
-      );
+  const handleProfileImageUpload = async (file: File) => {
+    if (!token || !userId) {
+      toast.error('Session expired. Please sign in again.');
+      navigate('/login');
+      return;
     }
-  };
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return renderDashboardContent();
-      case 'personal':
-        return (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Fields... */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">First Name</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={profile.firstName}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Last Name</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={profile.lastName}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                  <input
-                    type="email"
-                    name="email"
-                    value={profile.email}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Phone Number</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={profile.phone}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Bio</label>
-              <textarea
-                name="bio"
-                value={profile.bio}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                rows={4}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70 resize-none"
-              />
-            </div>
+    setProfileImageUploading(true);
+    try {
+      const form = new FormData();
+      form.append('profile_image', file);
 
-            <div className="pt-4 border-t border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                <MapPin className="w-5 h-5 mr-2 text-[#5ba409]" />
-                Home Address
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-gray-700">Street Address</label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={profile.address}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">City</label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={profile.city}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">Province</label>
-                  <input
-                    type="text"
-                    name="province"
-                    value={profile.province}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Farm Address Section - Only for farmers */}
-            {profile.userType === 'farmer' && (
-              <div className="pt-4 border-t border-gray-100">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                  <Sprout className="w-5 h-5 mr-2 text-[#5ba409]" />
-                  Farm Address
-                </h3>
-
-                {/* Same as home toggle */}
-                <label className="flex items-center gap-3 mb-6 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={profile.farmAddressSameAsHome}
-                      onChange={(e) => setProfile({ ...profile, farmAddressSameAsHome: e.target.checked })}
-                      disabled={!isEditing}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-[#5ba409] transition-colors peer-disabled:opacity-50" />
-                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5 shadow-sm" />
-                  </div>
-                  <span className="text-sm font-bold text-gray-700 group-hover:text-gray-900 transition-colors">
-                    Same as home address
-                  </span>
-                </label>
-
-                {/* Show farm address fields only when NOT same as home */}
-                {!profile.farmAddressSameAsHome && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="md:col-span-2 space-y-2">
-                      <label className="text-sm font-bold text-gray-700">Farm Street Address</label>
-                      <input
-                        type="text"
-                        name="farmAddress"
-                        value={profile.farmAddress || ''}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="Enter farm location address"
-                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-gray-700">Farm City</label>
-                      <input
-                        type="text"
-                        name="farmCity"
-                        value={profile.farmCity || ''}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="City / Municipality"
-                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-gray-700">Farm Province</label>
-                      <input
-                        type="text"
-                        name="farmProvince"
-                        value={profile.farmProvince || ''}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="Province"
-                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-gray-700">Farm Zip Code</label>
-                      <input
-                        type="text"
-                        name="farmZipCode"
-                        value={profile.farmZipCode || ''}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="Zip Code"
-                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {profile.farmAddressSameAsHome && (
-                  <div className="bg-green-50 rounded-2xl p-4 border border-green-100 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#5ba409]/10 rounded-xl flex items-center justify-center shrink-0">
-                      <MapPin className="w-5 h-5 text-[#5ba409]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-green-900">Farm is at your home address</p>
-                      <p className="text-xs text-green-700">{profile.address}{profile.city ? `, ${profile.city}` : ''}{profile.province ? `, ${profile.province}` : ''}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      case 'security':
-        return (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-xl">
-              <div className="flex">
-                <Shield className="h-6 w-6 text-orange-400" />
-                <div className="ml-3">
-                  <h3 className="text-sm font-bold text-orange-800">Security Recommendation</h3>
-                  <p className="text-sm text-orange-700 mt-1">We recommend changing your password every 3 months for better security.</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Current Password</label>
-                <input
-                  type="password"
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">New Password</label>
-                <input
-                  type="password"
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all"
-                  placeholder="Enter new password"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Confirm New Password</label>
-                <input
-                  type="password"
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all"
-                  placeholder="Confirm new password"
-                />
-              </div>
-              <button className="bg-[#5ba409] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#4d8f08] transition-colors mt-4">
-                Update Password
-              </button>
-            </div>
-
-            <div className="pt-6 border-t border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                <Bell className="w-5 h-5 mr-2 text-[#5ba409]" />
-                Notification Preferences
-              </h3>
-              <div className="space-y-3">
-                {[
-                  'Email notifications for new orders',
-                  'SMS alerts for delivery updates',
-                  'Marketing updates and newsletters',
-                  'System announcements'
-                ].map((pref, idx) => (
-                  <label key={idx} className="flex items-center space-x-3 cursor-pointer group">
-                    <div className="relative">
-                      <input type="checkbox" className="sr-only" defaultChecked={idx < 2} />
-                      <div className="w-10 h-6 bg-gray-200 rounded-full shadow-inner transition-colors group-has-[:checked]:bg-[#5ba409]"></div>
-                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform group-has-[:checked]:translate-x-4 shadow-sm"></div>
-                    </div>
-                    <span className="text-gray-700 font-medium">{pref}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      case 'role':
-        if (effectiveUserType === 'farmer') {
-          const farmerProducts = sampleProducts.filter(p => isReadOnly ? p.seller === "Juan dela Cruz" : true).slice(0, 4);
-          
-          return (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                <Sprout className="w-6 h-6 mr-2 text-[#5ba409]" />
-                {isReadOnly ? 'Farm Information' : 'My Farm Information'}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">Farm Name</label>
-                  <input
-                    type="text"
-                    name="farmName"
-                    value={profile.farmName}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">Total Land Area</label>
-                  <div className="relative">
-                    <Map className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="farmSize"
-                      value={profile.farmSize}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">Delivery Range</label>
-                  <div className="relative">
-                    <Truck className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="deliveryRange"
-                      value={profile.deliveryRange}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#5ba409] focus:outline-none transition-all disabled:opacity-70"
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="pt-4 border-t border-gray-100">
-                <h4 className="font-bold text-gray-900 mb-3">{isReadOnly ? 'Listed Produce' : 'Primary Produce'}</h4>
-                
-                {isReadOnly ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {farmerProducts.map(p => (
-                      <div key={p.id} onClick={() => navigate(`/product/${p.id}`)} className="bg-white rounded-xl overflow-hidden border border-gray-100 cursor-pointer hover:border-[#5ba409] hover:shadow-lg transition-all group">
-                        <div className="h-24 overflow-hidden relative">
-                          <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                          <div className="absolute top-2 left-2 bg-white/90 px-2 py-0.5 rounded text-[10px] font-black">{p.category}</div>
-                        </div>
-                        <div className="p-3">
-                          <p className="font-bold text-gray-900 text-sm truncate">{p.name}</p>
-                          <p className="text-[#5ba409] font-black text-sm">₱{p.price}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {['Vegetables', 'Fruits', 'Organic Rice', 'Spices'].map(tag => (
-                      <span key={tag} className="bg-green-50 text-[#5ba409] px-3 py-1 rounded-full text-sm font-bold border border-green-100">
-                        {tag}
-                      </span>
-                    ))}
-                    <button className="text-gray-400 hover:text-[#5ba409] border-2 border-dashed border-gray-200 rounded-full px-3 py-0.5 text-sm font-bold transition-colors">
-                      + Add Category
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        } else if (effectiveUserType === 'buyer') {
-          return (
-            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            
-
-              {/* Order History */}
-              <div>
-                 <h3 className="text-2xl font-black text-gray-900 mb-6 flex items-center gap-3">
-                  <Package className="w-7 h-7 text-[#5ba409]" />
-                  Order History
-                </h3>
-                
-                <div className="space-y-8">
-                  {/* Incoming Orders */}
-                  <div>
-                    <h4 className="font-bold text-gray-500 uppercase tracking-widest text-xs mb-4 flex items-center gap-2">
-                      <Clock className="w-4 h-4" /> Incoming Orders
-                    </h4>
-                    <div className="space-y-4">
-                      {/* Order Item */}
-                      <div className="bg-white p-5 rounded-2xl border-2 border-amber-100 shadow-sm flex flex-col md:flex-row gap-5 items-start md:items-center">
-                        <div className="w-16 h-16 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                          <Truck className="w-8 h-8 text-amber-500" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start mb-1">
-                            <h5 className="font-black text-gray-900 text-lg">Fresh Carabao Mangoes</h5>
-                            <span className="bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">Processing</span>
-                          </div>
-                          <p className="text-sm font-bold text-gray-500 mb-1">Order #ORD-2026-089 • Sold by: Mang Jose</p>
-                          <p className="text-sm text-gray-400">Expected Delivery: <span className="text-gray-700 font-bold">Tomorrow, 2:00 PM</span></p>
-                        </div>
-                        <div className="text-right shrink-0 min-w-[100px]">
-                          <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Total</p>
-                          <p className="text-2xl font-black text-gray-900">₱450</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Completed Orders */}
-                  <div>
-                    <h4 className="font-bold text-gray-500 uppercase tracking-widest text-xs mb-4 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" /> Completed Orders
-                    </h4>
-                    <div className="space-y-4">
-                      {[
-                        { id: 'ORD-2026-075', name: 'Organic Roma Tomatoes', seller: 'Green Valley Organic Farm', date: 'Feb 28, 2026', total: '₱240' },
-                        { id: 'ORD-2026-062', name: 'Free-Range Brown Eggs', seller: 'Ana\'s Poultry', date: 'Feb 25, 2026', total: '₱180' }
-                      ].map((order, i) => (
-                        <div key={i} className="bg-gray-50 p-5 rounded-2xl border border-gray-100 hover:border-green-200 transition-colors flex flex-col md:flex-row gap-5 items-start md:items-center">
-                          <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                            <Package className="w-8 h-8 text-gray-400" />
-                          </div>
-                          <div className="flex-1 w-full">
-                            <div className="flex justify-between items-start mb-1">
-                              <h5 className="font-black text-gray-900 text-lg">{order.name}</h5>
-                              <span className="bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full flex items-center gap-1">
-                                <CheckCircle className="w-3 h-3" /> Delivered
-                              </span>
-                            </div>
-                            <p className="text-sm font-bold text-gray-500 mb-1">Order #{order.id} • Sold by: {order.seller}</p>
-                            <p className="text-sm text-gray-400">Delivered on: <span className="text-gray-700 font-bold">{order.date}</span></p>
-                          </div>
-                          <div className="text-right shrink-0 min-w-[100px] flex flex-col items-end w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-gray-200">
-                            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1 hidden md:block">Total</p>
-                            <div className="flex justify-between md:block w-full">
-                              <span className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1 md:hidden">Total</span>
-                              <p className="text-xl font-black text-gray-900 mb-2">{order.total}</p>
-                            </div>
-                            <button className="text-xs font-black text-[#5ba409] hover:underline underline-offset-2 bg-green-50 px-4 py-2 rounded-xl">Buy Again</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          );
-        } else if (effectiveUserType === 'brgy_official') {
-          return (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                <MapPin className="w-6 h-6 mr-2 text-[#5ba409]" />
-                Barangay Jurisdiction
-              </h3>
-              <div className="bg-emerald-50 rounded-xl p-6">
-                <p className="text-emerald-800 font-bold mb-2">Assigned Barangay: San Jose</p>
-                <p className="text-sm text-emerald-600">You are responsible for managing farmer listings and coordinating local orders within this jurisdiction.</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 border-2 border-gray-100 rounded-xl">
-                  <p className="text-xs font-black text-gray-400 uppercase">Farmers Managed</p>
-                  <p className="text-xl font-bold text-gray-900">42</p>
-                </div>
-                <div className="p-4 border-2 border-gray-100 rounded-xl">
-                  <p className="text-xs font-black text-gray-400 uppercase">Active Listings</p>
-                  <p className="text-xl font-bold text-gray-900">128</p>
-                </div>
-              </div>
-            </div>
-          );
-        } else if (effectiveUserType === 'lgu_official') {
-          return (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                <Shield className="w-6 h-6 mr-2 text-indigo-600" />
-                LGU Authorization
-              </h3>
-              <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
-                <p className="text-indigo-900 font-bold mb-2">Representative ID: LGU-MLY-2026-089</p>
-                <p className="text-sm text-indigo-700">Authorized to perform platform-wide moderation, listing validation, and inter-barangay coordination.</p>
-              </div>
-              <button className="w-full py-3 bg-white border-2 border-indigo-200 text-indigo-700 rounded-xl font-bold hover:bg-indigo-50 transition-all">
-                Update Security Credentials
-              </button>
-            </div>
-          );
+      const payload = buildProfilePayload() as Record<string, unknown>;
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value === undefined || value === null) {
+          form.append(key, '');
         } else {
-          return (
-            <div className="p-8 text-center bg-gray-50 rounded-2xl">
-              <Shield className="w-16 h-16 text-[#5ba409] mx-auto mb-4 opacity-50" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2">System Administrator</h3>
-              <p className="text-gray-600">You have full access to system management and user oversight tools.</p>
-            </div>
-          );
+          form.append(key, String(value));
         }
-      default:
-        return null;
+      });
+
+      const res = await fetch(`${API_BASE_URL}/users/${userId}/profile`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.message || 'Failed to upload profile image.');
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      setProfile((prev) => ({
+        ...prev,
+        profileImage: data?.profile_image || URL.createObjectURL(file),
+      }));
+      toast.success('Profile image updated.');
+    } catch {
+      toast.error('Failed to upload profile image.');
+    } finally {
+      setProfileImageUploading(false);
     }
   };
+
+  const handleFarmImageUpload = async (file: File) => {
+    if (!token || !userId) {
+      toast.error('Session expired. Please sign in again.');
+      navigate('/login');
+      return;
+    }
+
+    setFarmImageUploading(true);
+    try {
+      const form = new FormData();
+      form.append('farm_image', file);
+
+      const payload = buildProfilePayload() as Record<string, unknown>;
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value === undefined || value === null) {
+          form.append(key, '');
+        } else {
+          form.append(key, String(value));
+        }
+      });
+
+      const res = await fetch(`${API_BASE_URL}/users/${userId}/profile`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+
+      if (!res.ok) {
+        toast.error('Failed to upload farm image.');
+        return;
+      }
+
+      const data = await res.json();
+      setProfile((prev) => ({
+        ...prev,
+        farmImage: data?.farm_image || URL.createObjectURL(file),
+      }));
+      toast.success('Background image updated.');
+    } catch {
+      toast.error('Failed to upload farm image.');
+    } finally {
+      setFarmImageUploading(false);
+    }
+  };
+
+  const handleRemoveCancelledOrder = async (reqId: number) => {
+    if (!token) {
+      toast.error('Session expired. Please sign in again.');
+      navigate('/login');
+      return;
+    }
+
+    setRemovingOrderId(reqId);
+    try {
+      const response = await fetch(`${API_BASE_URL}/purchases/cancelled/${reqId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.message || 'Unable to remove cancelled order.');
+        return;
+      }
+
+      setOrders((prev) => prev.filter((order) => order.req_id !== reqId));
+      toast.success('Cancelled order removed.');
+    } catch {
+      toast.error('Network error while removing cancelled order.');
+    } finally {
+      setRemovingOrderId(null);
+    }
+  };
+
+  const heroStyle: React.CSSProperties =
+    isFarmer && profile.farmImage
+      ? {
+          backgroundImage: `linear-gradient(120deg, rgba(15, 23, 42, 0.72), rgba(22, 101, 52, 0.62)), url(${getFullImageUrl(profile.farmImage)})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }
+      : isFarmer
+        ? {
+            background:
+              'linear-gradient(135deg, #0f172a 0%, #14532d 52%, #166534 100%)',
+          }
+        : {
+            background:
+              'linear-gradient(135deg, #0f172a 0%, #1e293b 56%, #334155 100%)',
+          };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-100 pt-20 flex items-center justify-center">
+        <div className="h-10 w-10 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F9FBE7] to-white py-8 lg:py-12">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Profile Card */}
-        <div className="bg-white rounded-[2rem] shadow-xl overflow-hidden mb-8">
-          {/* Cover Photo */}
-          <div className="h-48 bg-gradient-to-r from-[#5ba409] to-[#8BC34A] relative">
-            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/leaf.png')]"></div>
-          </div>
-          
-          <div className="px-8 pb-8">
-            <div className="relative flex flex-col md:flex-row items-end -mt-16 mb-8 gap-6">
-              {/* Profile Image */}
-              <div className="relative group">
-                <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl border-8 border-white overflow-hidden shadow-2xl bg-gray-100 ring-4 ring-green-50">
-                  <img 
-                    src={profile.profileImage} 
-                    alt={`${profile.firstName} ${profile.lastName}`}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+    <div className="min-h-screen bg-slate-100 pt-20 pb-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-6">
+        <section
+          className="relative overflow-hidden rounded-2xl border border-slate-200/70 shadow-sm"
+          style={heroStyle}
+        >
+          <div className="p-6 md:p-8 lg:p-10">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+              <div className="flex items-end gap-4">
+                <label className="relative h-24 w-24 rounded-2xl border-4 border-white/90 bg-white/95 shadow-xl overflow-hidden grid place-items-center cursor-pointer">
+                  {profile.profileImage ? (
+                    <img src={getFullImageUrl(profile.profileImage)} alt="Profile" className="h-full w-full object-cover" />
+                  ) : (
+                    <UserIcon className="w-10 h-10 text-slate-400" />
+                  )}
+                  <span className="absolute bottom-1 right-1 grid h-7 w-7 place-items-center rounded-full border border-white/75 bg-slate-900/80 text-white">
+                    <Camera size={12} />
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={profileImageUploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleProfileImageUpload(file);
+                      e.currentTarget.value = '';
+                    }}
                   />
+                </label>
+
+                <div className="text-white pb-1">
+                  <h1 className="text-2xl md:text-3xl font-bold capitalize">
+                    {profile.firstName} {profile.lastName}
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-white/82">
+                    {isFarmer
+                      ? 'Manage your storefront identity, contact details, farm presentation, and order activity in one place.'
+                      : 'Keep your buyer profile polished, your account secure, and your wishlist items ready for harvest.'}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="rounded-full border border-white/30 bg-white/10 px-3 py-1 uppercase tracking-wide">
+                      {profile.userType}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-3 py-1">
+                      <MapPin size={12} />
+                      {[profile.city, profile.province].filter(Boolean).join(', ') || 'Location not set'}
+                    </span>
+                  </div>
                 </div>
-                {isEditing && (
-                  <button className="absolute bottom-2 right-2 p-3 bg-[#5ba409] text-white rounded-2xl shadow-lg hover:scale-110 transition-all">
-                    <Camera className="w-5 h-5" />
-                  </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2 md:justify-end">
+                <label className="inline-flex items-center gap-2 rounded-xl border border-white/35 bg-black/30 px-4 py-2.5 text-sm font-semibold text-white cursor-pointer hover:bg-black/45 transition">
+                  <Camera size={15} />
+                  {profileImageUploading ? 'Uploading...' : 'Change Profile Photo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={profileImageUploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleProfileImageUpload(file);
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                </label>
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={saveLoading}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {saveLoading ? 'Updating...' : 'Update Profile'}
+                </button>
+                {isFarmer && (
+                  <label className="inline-flex items-center gap-2 rounded-xl border border-white/35 bg-black/30 px-4 py-2.5 text-sm font-semibold text-white cursor-pointer hover:bg-black/45 transition">
+                    <Camera size={15} />
+                    {farmImageUploading ? 'Uploading...' : 'Change Farm Background'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={farmImageUploading}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFarmImageUpload(file);
+                        e.currentTarget.value = '';
+                      }}
+                    />
+                  </label>
                 )}
               </div>
-              
-              {/* Profile Header Info */}
-              <div className="flex-1 pb-2">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h1 className="text-3xl font-black text-gray-900 flex items-center gap-2">
-                      {isReadOnly ? 'Juan dela Cruz' : `${profile.firstName} ${profile.lastName}`}
-                      {isReadOnly && <span className="bg-blue-50 text-blue-600 text-xs px-2 py-0.5 rounded-full font-bold border border-blue-100 flex items-center"><Eye className="w-3 h-3 mr-1"/> View Only</span>}
-                    </h1>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <span className="bg-green-100 text-[#5ba409] px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider">
-                        {effectiveUserType}
-                      </span>
-                      <span className="text-gray-400 text-sm flex items-center">
-                        <MapPin className="w-4 h-4 mr-1" />
-                        {profile.city}, {profile.province}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    {!isReadOnly && (
-                      !isEditing ? (
-                        <button
-                          onClick={() => setIsEditing(true)}
-                          className="bg-gray-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-black transition-all flex items-center space-x-2"
-                        >
-                          <User className="w-5 h-5" />
-                          <span>Edit Profile</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={handleSave}
-                          className="bg-[#5ba409] text-white px-6 py-3 rounded-2xl font-bold hover:bg-[#4d8f08] transition-all flex items-center space-x-2"
-                        >
-                          <Save className="w-5 h-5" />
-                          <span>Save Changes</span>
-                        </button>
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex flex-wrap gap-2 mb-8 bg-gray-50 p-2 rounded-2xl border border-gray-100">
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center space-x-2 ${
-                  activeTab === 'dashboard' 
-                    ? 'bg-white text-[#5ba409] shadow-md scale-[1.02]' 
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <LayoutDashboard className="w-5 h-5" />
-                <span>Account Overview</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('personal')}
-                className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center space-x-2 ${
-                  activeTab === 'personal' 
-                    ? 'bg-white text-[#5ba409] shadow-md scale-[1.02]' 
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <User className="w-5 h-5" />
-                <span>Personal Info</span>
-              </button>
-              
-              {profile.userType !== 'admin' && (
-                <button
-                  onClick={() => setActiveTab('role')}
-                  className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center space-x-2 ${
-                    activeTab === 'role' 
-                      ? 'bg-white text-[#5ba409] shadow-md scale-[1.02]' 
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {profile.userType === 'farmer' ? (
-                    <Sprout className="w-5 h-5" />
-                  ) : profile.userType === 'buyer' ? (
-                    <History className="w-5 h-5" />
-                  ) : (
-                     <ShieldCheck className="w-5 h-5" />
-                  )}
-                  <span>{profile.userType === 'farmer' ? 'Farm Details' : 'Activity History'}</span>
-                </button>
-              )}
-
-              {!isReadOnly && (
-                <button
-                  onClick={() => setActiveTab('security')}
-                  className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center space-x-2 ${
-                    activeTab === 'security' 
-                      ? 'bg-white text-[#5ba409] shadow-md scale-[1.02]' 
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Shield className="w-5 h-5" />
-                  <span>Security</span>
-                </button>
-              )}
-            </div>
-
-            {/* Tab Content */}
-            <div className="min-h-[400px]">
-              {renderTabContent()}
             </div>
           </div>
+        </section>
+
+        <div className="mt-5 grid grid-cols-1 gap-5 md:items-start md:grid-cols-[260px_minmax(0,1fr)]">
+          <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:sticky md:top-24">
+            <div className="space-y-2">
+              {[
+                { id: 'info', label: 'My Profile', icon: UserIcon },
+                ...(!isFarmer ? [{ id: 'market', label: 'Wishlist', icon: Heart }] : []),
+                { id: 'history', label: 'Orders', icon: Clock },
+                { id: 'password', label: 'Security', icon: Lock },
+                { id: 'alerts', label: 'Notifications', icon: Bell },
+                { id: 'settings', label: 'Settings', icon: SlidersHorizontal },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveSection(tab.id)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
+                    activeSection === tab.id
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <tab.icon size={16} />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <button
+                onClick={() => setIsLogoutModalOpen(true)}
+                className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-rose-700"
+              >
+                <LogOut size={16} />
+                Sign Out
+              </button>
+            </div>
+          </aside>
+
+          <main className="space-y-5">
+            {activeSection === 'info' && (
+              <section className={sectionClass}>
+                <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">My Info</h2>
+                    <p className="text-sm text-slate-500">Manage your personal and contact details.</p>
+                  </div>
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={saveLoading}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    {saveLoading ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500">First Name</span>
+                    <input className={inputClass} value={profile.firstName} onChange={(e) => setProfile({ ...profile, firstName: e.target.value })} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500">Last Name</span>
+                    <input className={inputClass} value={profile.lastName} onChange={(e) => setProfile({ ...profile, lastName: e.target.value })} />
+                  </label>
+
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500">Email</span>
+                    <div className="relative">
+                      <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input className={`${inputClass} pl-9 bg-slate-50 text-slate-600`} readOnly value={profile.email} />
+                    </div>
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500">Phone</span>
+                    <div className="relative">
+                      <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input className={`${inputClass} pl-9`} value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} />
+                    </div>
+                  </label>
+
+                  <label className="space-y-1 md:col-span-2">
+                    <span className="text-xs font-medium text-slate-500">Home Address</span>
+                    <input className={inputClass} value={profile.address} onChange={(e) => setProfile({ ...profile, address: e.target.value })} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500">City</span>
+                    <input className={inputClass} value={profile.city} onChange={(e) => setProfile({ ...profile, city: e.target.value })} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500">Province</span>
+                    <input className={inputClass} value={profile.province} onChange={(e) => setProfile({ ...profile, province: e.target.value })} />
+                  </label>
+                  <label className="space-y-1 md:max-w-[240px]">
+                    <span className="text-xs font-medium text-slate-500">ZIP Code</span>
+                    <input className={inputClass} value={profile.zipCode} onChange={(e) => setProfile({ ...profile, zipCode: e.target.value })} />
+                  </label>
+
+                  <label className="space-y-1 md:col-span-2">
+                    <span className="text-xs font-medium text-slate-500">Bio</span>
+                    <textarea
+                      rows={4}
+                      className={inputClass}
+                      value={profile.bio || ''}
+                      onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                      placeholder="Tell buyers and the community about you..."
+                    />
+                  </label>
+                </div>
+              </section>
+            )}
+
+            {activeSection === 'market' && !isFarmer && (
+              <section className={sectionClass}>
+                <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Wishlist</h2>
+                    <p className="text-sm text-slate-500">Your saved products for future harvests.</p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/buyer/marketplace')}
+                    className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    <ShoppingCart size={15} />
+                    Explore Market
+                  </button>
+                </div>
+
+                <div className="p-6">
+                  {wishlistLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-3">
+                      <div className="h-8 w-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                      <p className="text-xs text-slate-400 font-medium">Updating Wishlist...</p>
+                    </div>
+                  ) : wishlist.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-24 text-center">
+                      <div className="h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mb-4">
+                        <Heart size={32} />
+                      </div>
+                      <h3 className="text-base font-bold text-slate-900">Your wishlist is empty</h3>
+                      <p className="text-sm text-slate-500 mt-1 max-w-[240px]">Save some products to see them here later!</p>
+                      <button
+                        onClick={() => navigate('/buyer/marketplace')}
+                        className="mt-6 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-900/10 hover:bg-emerald-700 transition-all hover:-translate-y-0.5"
+                      >
+                        Shop Now
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+                      {wishlist.map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          isFavorited={true}
+                          onToggleFavorite={toggleFavorite}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {activeSection === 'password' && (
+              <section className={`${sectionClass} space-y-4 p-6`}>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Change Password</h2>
+                  <p className="text-sm text-slate-500">Use a strong password with at least 8 characters.</p>
+                </div>
+                <input className={inputClass} type="password" placeholder="Current password" value={passwordData.currentPassword} onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })} />
+                <input className={inputClass} type="password" placeholder="New password" value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} />
+                <input className={inputClass} type="password" placeholder="Confirm new password" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} />
+                <button onClick={handleUpdatePassword} disabled={passwordLoading} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+                  {passwordLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </section>
+            )}
+
+            {activeSection === 'alerts' && (
+              <section className={`${sectionClass} space-y-4 p-6`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Alerts</h2>
+                    <p className="text-sm text-slate-500">Choose your notification preferences.</p>
+                  </div>
+                  <button onClick={handleSaveAlerts} disabled={alertsSaving} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                    {alertsSaving ? 'Saving...' : 'Save Alerts'}
+                  </button>
+                </div>
+
+                {[
+                  { id: 'orders', label: isFarmer ? 'New Orders' : 'Order Approved', desc: isFarmer ? 'Alert me when someone places an order.' : 'Alert me when a farmer approves my order.' },
+                  { id: 'messages', label: 'Messages', desc: 'Alert me when I receive a new message.' },
+                ].map((item) => (
+                  <label key={item.id} className="flex items-center justify-between rounded-xl border border-slate-200 p-4 cursor-pointer">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">{item.label}</p>
+                      <p className="text-xs text-slate-500">{item.desc}</p>
+                    </div>
+                    <ToggleSwitch
+                      checked={(notificationSettings as Record<string, boolean>)[item.id]}
+                      onChange={(next) => setNotificationSettings((prev) => ({ ...prev, [item.id]: next }))}
+                      ariaLabel={`${item.label} toggle`}
+                    />
+                  </label>
+                ))}
+              </section>
+            )}
+
+            {activeSection === 'info' && isFarmer && (
+              <section className={sectionClass}>
+                <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">My Farm</h2>
+                    <p className="text-sm text-slate-500">Manage your farm details and banner image.</p>
+                  </div>
+                  <button onClick={handleSaveProfile} disabled={saveLoading} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                    {saveLoading ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2 rounded-xl border border-dashed border-slate-300 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="h-20 w-32 rounded-lg border border-slate-200 overflow-hidden bg-slate-100 shrink-0">
+                      {profile.farmImage ? (
+                        <img src={getFullImageUrl(profile.farmImage)} alt="Farm" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full grid place-items-center text-xs text-slate-400">No image</div>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700">Farm Banner</p>
+                      <p className="text-xs text-slate-500 mb-2">Upload a farm image shown on your profile header.</p>
+                      <label className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white cursor-pointer hover:bg-slate-800">
+                        <Camera size={14} />
+                        {farmImageUploading ? 'Uploading...' : 'Upload Farm Image'}
+                        <input type="file" accept="image/*" className="hidden" disabled={farmImageUploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFarmImageUpload(file); e.currentTarget.value = ''; }} />
+                      </label>
+                    </div>
+                  </div>
+
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500">Farm Name</span>
+                    <input className={inputClass} value={profile.farmName || ''} onChange={(e) => setProfile({ ...profile, farmName: e.target.value })} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500">Farm Address</span>
+                    <input className={inputClass} value={profile.farmAddress || ''} onChange={(e) => setProfile({ ...profile, farmAddress: e.target.value })} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500">Farm City</span>
+                    <input className={inputClass} value={profile.farmCity || ''} onChange={(e) => setProfile({ ...profile, farmCity: e.target.value })} />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500">Farm Province</span>
+                    <input className={inputClass} value={profile.farmProvince || ''} onChange={(e) => setProfile({ ...profile, farmProvince: e.target.value })} />
+                  </label>
+                  <label className="space-y-1 md:max-w-[240px]">
+                    <span className="text-xs font-medium text-slate-500">Farm ZIP Code</span>
+                    <input className={inputClass} value={profile.farmZipCode || ''} onChange={(e) => setProfile({ ...profile, farmZipCode: e.target.value })} />
+                  </label>
+
+                  <div className="md:col-span-2 mt-1 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-sm text-slate-700">Use home address as farm address</p>
+                    <ToggleSwitch
+                      checked={profile.farmAddressSameAsHome ?? true}
+                      onChange={(next) => setProfile({ ...profile, farmAddressSameAsHome: next })}
+                      ariaLabel="Use home address for farm"
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeSection === 'history' && (
+              <section className={sectionClass}>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-5">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Order History</h2>
+                    <p className="text-sm text-slate-500">All orders with product images and counterpart details.</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <select value={orderStatusFilter} onChange={(e) => setOrderStatusFilter(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                      {orderStatuses.map((status) => (
+                        <option key={status} value={status}>{status === 'all' ? 'All Statuses' : status}</option>
+                      ))}
+                    </select>
+                    <select value={orderSort} onChange={(e) => setOrderSort(e.target.value as 'latest' | 'oldest')} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                      <option value="latest">Latest</option>
+                      <option value="oldest">Oldest</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="p-4 space-y-3">
+                  {filteredOrders.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-500">No orders found for the selected filters.</div>
+                  ) : (
+                    filteredOrders.map((order) => {
+                      const status = (order.req_status || 'Unknown').toLowerCase();
+                      const isCancelledStatus = status.includes('cancel');
+                      const badgeClass = statusClasses[status] || 'bg-slate-100 text-slate-700 border-slate-200';
+                      const counterpart = isFarmer
+                        ? `${order.buyer_first || ''} ${order.buyer_last || ''}`.trim() || 'Buyer'
+                        : `${order.farmer_first || ''} ${order.farmer_last || ''}`.trim() || 'Farmer';
+                      const dateText = new Date(order.req_date || order.created_at || '').toLocaleDateString();
+                      const amount = Number(order.quantity || 0) * Number(order.p_price || 0);
+
+                      return (
+                        <article
+                          key={order.req_id}
+                          className={`rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-center ${appSettings.compactOrders ? 'p-3 gap-3' : 'p-4 gap-4'}`}
+                        >
+                          <div className="h-16 w-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
+                            {order.p_image ? (
+                              <img src={getFullImageUrl(order.p_image)} alt={order.p_name || 'Product'} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="h-full w-full grid place-items-center text-[10px] text-slate-400">No image</div>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900">{order.p_name || 'Untitled Product'}</p>
+                            <p className="text-xs text-slate-500">Order #{order.req_id} - {dateText}</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {isFarmer ? 'Buyer' : 'Farmer'}: <span className="font-medium text-slate-700">{counterpart}</span>
+                            </p>
+                          </div>
+
+                          <div className="md:text-right space-y-1">
+                            <p className="text-sm font-semibold text-slate-900">PHP {amount.toLocaleString()}</p>
+                            <span className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-medium capitalize ${badgeClass}`}>
+                              {order.req_status}
+                            </span>
+                            {isCancelledStatus && (
+                              <div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveCancelledOrder(order.req_id)}
+                                  disabled={removingOrderId === order.req_id}
+                                  className="mt-2 inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-600 hover:bg-rose-100 disabled:opacity-60"
+                                  aria-label={`Remove cancelled order ${order.req_id}`}
+                                >
+                                  <Trash2 size={12} />
+                                  {removingOrderId === order.req_id ? 'Removing...' : 'Remove'}
+                                </button>
+                              </div>
+                            )}
+
+                            {!isFarmer && status === 'completed' && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenReview(order)}
+                                className="mt-2 inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-600 hover:bg-amber-100"
+                              >
+                                <Star size={12} className="fill-amber-600" />
+                                Review Product
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
+            )}
+            {activeSection === 'settings' && (
+              <section className={`${sectionClass} p-6`}>
+                <div className="mb-5 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Platform Settings</h2>
+                    <p className="text-sm text-slate-500">Configure your global account preferences.</p>
+                  </div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                    <Globe2 size={18} />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <h3 className="text-sm font-semibold text-slate-900">Language & Region</h3>
+                    <p className="mb-3 text-xs text-slate-500">Set your preferred language and regional formats.</p>
+                    <select
+                      className={inputClass}
+                      value={appSettings.language}
+                      onChange={(e) => setAppSettings((prev) => ({ ...prev, language: e.target.value }))}
+                    >
+                      <option value="en-PH">English (Philippines)</option>
+                      <option value="fil-PH">Filipino</option>
+                    </select>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-900">Compact Order View</h3>
+                        <p className="text-xs text-slate-500">Reduce spacing in your Orders list for faster scanning.</p>
+                      </div>
+                      <ToggleSwitch
+                        checked={appSettings.compactOrders}
+                        onChange={(next) => setAppSettings((prev) => ({ ...prev, compactOrders: next }))}
+                        ariaLabel="Compact order view toggle"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleSaveSettings}
+                      disabled={settingsSaving}
+                      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      {settingsSaving ? 'Saving...' : 'Save Settings'}
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+          </main>
         </div>
       </div>
 
-      {/* Quick Setup Modal for New Users */}
-      <Modal
-        isOpen={showSetupModal}
-        onClose={() => setShowSetupModal(false)}
-        title="Welcome to AgriLink! 🌱"
-        size="2xl"
-      >
-        <div className="space-y-6">
-          <div className="bg-green-50 p-6 rounded-3xl border border-green-100 mb-6">
-            <h3 className="text-xl font-black text-green-900 mb-2">Almost there!</h3>
-            <p className="text-green-800/70 text-sm font-medium">
-              {profile.userType === 'farmer'
-                ? "Let's set up your merchant profile so you can start selling your harvests."
-                : "To start buying fresh produce, we just need a few more details to help with delivery and coordination."}
-            </p>
-          </div>
+      <LogoutConfirmationModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={confirmLogout}
+      />
 
-          <div className="space-y-6 overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
-            {/* Common: Mobile Number */}
-            <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm transition-all hover:border-green-100">
-              <label className="block text-xs font-black text-[#5ba409] uppercase tracking-widest mb-3">Mobile Number</label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="tel"
-                  placeholder="+63 9XX XXX XXXX"
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-green-600 rounded-2xl outline-none font-bold transition-all text-sm"
-                  value={profile.phone}
-                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Home/Delivery Address Section */}
-            <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm transition-all hover:border-green-100">
-              <label className="block text-xs font-black text-green-600 uppercase tracking-widest mb-3">
-                {profile.userType === 'farmer' ? "Home Address" : "Delivery Address"}
-              </label>
-              <div className="relative mb-4">
-                <MapPin className="absolute left-4 top-4 text-gray-400 w-5 h-5" />
-                <textarea
-                  placeholder="Street Name, Barangay, City, Province"
-                  rows={2}
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-2xl outline-none font-bold transition-all resize-none text-sm"
-                  value={profile.address}
-                  onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                <input
-                  placeholder="City"
-                  className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-xl outline-none font-bold text-xs"
-                  value={profile.city}
-                  onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-                />
-                <input
-                  placeholder="Province"
-                  className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-xl outline-none font-bold text-xs"
-                  value={profile.province}
-                  onChange={(e) => setProfile({ ...profile, province: e.target.value })}
-                />
-                <input
-                  placeholder="ZIP"
-                  className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#5ba409] rounded-xl outline-none font-bold text-xs"
-                  value={profile.zipCode}
-                  onChange={(e) => setProfile({ ...profile, zipCode: e.target.value })}
-                />
-              </div>
-
-              {/* Home Map (only if buyer or if farmer and wants to pin home) */}
-              <div className="w-full h-[200px] border-2 border-green-100 rounded-2xl overflow-hidden relative shadow-inner">
-                <MapBoxMap
-                  {...viewState}
-                  onMove={evt => setViewState(evt.viewState)}
-                  mapStyle={customMapStyle as any}
-                  mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN || ''}
-                  style={{width: '100%', height: '100%'}}
-                  onClick={(e) => {
-                    setProfile(prev => ({
-                      ...prev,
-                      latitude: e.lngLat.lat,
-                      longitude: e.lngLat.lng,
-                      ...(prev.farmAddressSameAsHome ? { farmLatitude: e.lngLat.lat, farmLongitude: e.lngLat.lng } : {})
-                    }));
-                  }}
-                >
-                  {profile.latitude && profile.longitude && (
-                    <Marker longitude={profile.longitude} latitude={profile.latitude} anchor="bottom">
-                      <div className="text-[#5ba409] drop-shadow-lg">
-                        <MapPin className="w-8 h-8 fill-white" />
-                      </div>
-                    </Marker>
-                  )}
-                </MapBoxMap>
-                <div className="absolute top-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
-                  <div className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-lg text-[9px] font-black text-[#5ba409] uppercase tracking-widest border border-green-100 pointer-events-auto">
-                    Pin Home Location
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Farm Section for Farmers */}
-            {(profile.role === 'farmer' || profile.userType === 'farmer') && (
-              <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm transition-all hover:border-orange-100 animate-in slide-in-from-top-4 duration-500">
-                <div className="flex items-center justify-between mb-4">
-                  <label className="block text-xs font-black text-orange-600 uppercase tracking-widest">Farm Location</label>
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <div className={`w-10 h-6 rounded-full p-1 transition-all duration-300 ${profile.farmAddressSameAsHome ? 'bg-green-600' : 'bg-gray-200'}`}>
-                      <div className={`w-4 h-4 bg-white rounded-full shadow-md transition-all duration-300 transform ${profile.farmAddressSameAsHome ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </div>
-                    <input 
-                      type="checkbox" 
-                      className="hidden" 
-                      checked={profile.farmAddressSameAsHome}
-                      onChange={(e) => setProfile({ ...profile, farmAddressSameAsHome: e.target.checked })}
-                    />
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-gray-600">Same as home</span>
-                  </label>
-                </div>
-
-                {!profile.farmAddressSameAsHome && (
-                  <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
-                    <div className="relative">
-                      <Sprout className="absolute left-4 top-4 text-orange-400 w-5 h-5" />
-                      <textarea
-                        placeholder="Farm Street Address"
-                        rows={2}
-                        className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-2xl outline-none font-bold transition-all resize-none text-sm"
-                        value={profile.farmAddress}
-                        onChange={(e) => setProfile({ ...profile, farmAddress: e.target.value })}
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <input
-                        placeholder="City"
-                        className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-xl outline-none font-bold text-xs"
-                        value={profile.farmCity}
-                        onChange={(e) => setProfile({ ...profile, farmCity: e.target.value })}
-                      />
-                      <input
-                        placeholder="Province"
-                        className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-xl outline-none font-bold text-xs"
-                        value={profile.farmProvince}
-                        onChange={(e) => setProfile({ ...profile, farmProvince: e.target.value })}
-                      />
-                      <input
-                        placeholder="ZIP"
-                        className="px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-orange-500 rounded-xl outline-none font-bold text-xs"
-                        value={profile.farmZipCode}
-                        onChange={(e) => setProfile({ ...profile, farmZipCode: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {profile.farmAddressSameAsHome ? (
-                  <div className="p-4 bg-orange-50 border-2 border-dashed border-orange-100 rounded-2xl flex flex-col items-center justify-center text-center space-y-2 opacity-80">
-                    <div className="p-2 bg-orange-100 rounded-xl">
-                      <MapPin className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <p className="text-[10px] font-black text-orange-800 uppercase tracking-widest">Using Home Coordinates</p>
-                  </div>
-                ) : (
-                  <div className="h-[200px] border-2 border-orange-100 rounded-2xl overflow-hidden relative shadow-inner mt-4">
-                    <MapBoxMap
-                      longitude={profile.farmLongitude || profile.longitude || 123.8854}
-                      latitude={profile.farmLatitude || profile.latitude || 10.3157}
-                      zoom={14}
-                      mapStyle={customMapStyle as any}
-                      mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN || ''}
-                      style={{width: '100%', height: '100%'}}
-                      onClick={(e) => {
-                        setProfile({
-                          ...profile,
-                          farmLatitude: e.lngLat.lat,
-                          farmLongitude: e.lngLat.lng,
-                        });
-                      }}
-                    >
-                      {profile.farmLatitude && profile.farmLongitude && (
-                        <Marker longitude={profile.farmLongitude} latitude={profile.farmLatitude} anchor="bottom">
-                          <div className="text-orange-600 drop-shadow-lg">
-                            <MapPin className="w-8 h-8 fill-white" />
-                          </div>
-                        </Marker>
-                      )}
-                    </MapBoxMap>
-                    <div className="absolute top-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
-                      <div className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-lg text-[9px] font-black text-orange-600 uppercase tracking-widest border border-orange-100 pointer-events-auto">
-                        Pin Farm Location
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-4 pt-4">
-            <button
-              onClick={() => setShowSetupModal(false)}
-              className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-gray-200 transition-all shadow-sm"
-            >
-              Skip for now
-            </button>
-            <button
-              onClick={handleSaveSetup}
-              className="flex-[2] py-4 bg-green-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-green-500/30 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-            >
-              {profile.userType === 'farmer' ? "Start Selling" : "Start Shopping"}
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </Modal>
+      <ReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        order={selectedOrderForReview}
+        onSuccess={() => {
+          // You could refetch reviews if we had a dedicated tab
+        }}
+      />
     </div>
   );
 };
 
-// Helper component for ShoppingCart since it's used in buyer role but not imported
-const ShoppingCart = ({ className }: { className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="24" 
-    height="24" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" />
-    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
-  </svg>
-);
-
 export default ProfilePage;
+
+

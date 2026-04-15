@@ -74,7 +74,7 @@ export const registerUser = async (data: RegisterInput) => {
       { expiresIn: '10m' }
     );
 
-    const confirmationURL = `http://localhost:5001/api/auth/verify?token=${verificationToken}`;
+    const confirmationURL = `http://localhost:${process.env.PORT || 5002}/api/auth/verify?token=${verificationToken}`;
 
 
     const logoUrl = process.env.LOGO_URL || 'https://osgogrbrjlnslgdinhgl.supabase.co/storage/v1/object/public/email-assets/AgriLinkGREEN.png';
@@ -135,4 +135,35 @@ export const loginUser = async (data: LoginInput) => {
     last_name: user.last_name,
     onboarding_completed: user.onboarding_completed
   };
+};
+
+export const updatePassword = async (authId: number, currentPassword: string, newPassword: string) => {
+    // 1. Get current password hash
+    const [users]: any = await db.execute(
+        'SELECT password_hash FROM auth_table WHERE id = ?',
+        [authId]
+    );
+
+    if (users.length === 0) {
+        throw new Error('User not found');
+    }
+
+    const { password_hash } = users[0];
+
+    // 2. Verify current password
+    const isMatch = await comparedPassword(currentPassword, password_hash);
+    if (!isMatch) {
+        throw new Error('Current password is incorrect');
+    }
+
+    // 3. Hash new password
+    const newHash = await hashPassword(newPassword);
+
+    // 4. Update
+    await db.execute(
+        'UPDATE auth_table SET password_hash = ? WHERE id = ?',
+        [newHash, authId]
+    );
+
+    return { message: 'Password updated successfully' };
 };

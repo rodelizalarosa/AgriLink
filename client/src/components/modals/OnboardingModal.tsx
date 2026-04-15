@@ -318,7 +318,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, user
                   {isFarmer ? "Home Base Location" : "Delivery Address & Pin"}
                 </h2>
                 <p className="text-gray-500">
-                  {isFarmer ? "Where are you personally based?" : "Pin your location for accurate delivery coordination."}
+                  {isFarmer ? "Where are you based? You can pin your farm, home, or a nearby landmark for easier meetups." : "Pin your exact location or a nearby landmark for easier meetups and delivery coordination."}
                 </p>
               </div>
 

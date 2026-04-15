@@ -1,58 +1,29 @@
 import React from 'react';
-import { TrendingUp } from 'lucide-react';
 import type { DashboardCardProps } from '../../types';
 
 const DashboardCard: React.FC<DashboardCardProps> = ({ icon: Icon, title, value, subtitle, color, trend }) => {
   return (
-    <div className="group relative bg-[#fcfdfe] hover:bg-white rounded-[2rem] p-7 shadow-xl shadow-gray-200/30 hover:shadow-2xl hover:shadow-green-900/10 transition-all duration-500 border border-gray-100/80 hover:border-[#5ba409]/30 overflow-hidden">
-      {/* Decorative background element */}
-      <div
-        className="absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-[0.05] group-hover:opacity-[0.08] transition-all duration-500 scale-100 group-hover:scale-110"
-        style={{ backgroundColor: color }}
-      />
+    <div className="group relative bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow border border-slate-200/70">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-slate-600">{title}</p>
+          <h3 className="mt-1 text-2xl font-extrabold text-slate-900 truncate">{value}</h3>
 
-      <div className="relative flex items-start justify-between">
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <p className="text-xs font-black text-gray-400 uppercase tracking-[0.15em]">
-              {title}
-            </p>
-            <div className="flex items-baseline gap-1">
-              <h3 className="text-4xl font-black text-gray-900 tracking-tight">
-                {value}
-              </h3>
+          {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
+
+          {trend && (
+            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold text-slate-600">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+              <span>{trend}</span>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            {subtitle && (
-              <p className="text-sm font-semibold text-gray-500 leading-tight">
-                {subtitle}
-              </p>
-            )}
-
-            {trend && (
-              <div className="flex items-center gap-1.5 py-1 px-3 bg-gray-50 rounded-full w-fit">
-                <div
-                  className="w-1.5 h-1.5 rounded-full animate-pulse"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider">
-                  {trend}
-                </span>
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
         <div
-          className="flex items-center justify-center w-14 h-14 rounded-2xl shadow-lg ring-4 ring-white transition-all duration-300 group-hover:-translate-y-1 group-hover:rotate-3"
-          style={{
-            backgroundColor: color,
-            boxShadow: `0 10px 20px -5px ${color}40`
-          }}
+          className="flex items-center justify-center w-11 h-11 rounded-xl border border-slate-200 shrink-0"
+          style={{ backgroundColor: `${color}12`, color }}
         >
-          <Icon className="w-7 h-7 text-white" />
+          <Icon className="w-5 h-5" />
         </div>
       </div>
     </div>

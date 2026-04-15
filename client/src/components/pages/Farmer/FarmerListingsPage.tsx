@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Leaf, Package, Search, Filter, Edit3, Trash2, ExternalLink, RefreshCcw, AlertTriangle, CheckCircle2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE_URL } from '../../../api/apiConfig';
+import { API_BASE_URL, getFullImageUrl } from '../../../api/apiConfig';
 import { useToast } from '../../ui/Toast';
 import Modal from '../../ui/Modal';
 import ProductDetailModal from '../../ui/ProductDetailModal';
 import { Plus } from 'lucide-react';
-
-const resolveImageUrl = (path: string) => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  const baseUrl = API_BASE_URL.replace('/api', '');
-  return `${baseUrl}${path}`;
-};
 
 const FarmerListingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -262,7 +255,7 @@ const FarmerListingsPage: React.FC = () => {
                             <div className="w-20 h-20 bg-slate-50 rounded-[1.75rem] overflow-hidden border-2 border-transparent group-hover:border-[#5ba409]/20 transition-all shrink-0 shadow-sm relative">
                               <div className="absolute inset-0 bg-gradient-to-br from-black/10 to-transparent pointer-events-none" />
                               {product.p_image ? (
-                                <img src={resolveImageUrl(product.p_image)} alt={product.p_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                <img src={getFullImageUrl(product.p_image)} alt={product.p_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center text-gray-200 font-black text-[9px] uppercase tracking-widest italic text-center px-4">Secure Logic</div>
                               )}
@@ -377,7 +370,7 @@ const FarmerListingsPage: React.FC = () => {
               <div className="w-24 h-24 bg-white rounded-[1.75rem] overflow-hidden border border-gray-100 shrink-0 shadow-sm relative group-hover:border-red-100 transition-all">
                 {productToDelete?.p_image ? (
                   <img
-                    src={resolveImageUrl(productToDelete.p_image)}
+                    src={getFullImageUrl(productToDelete.p_image)}
                     alt={productToDelete.p_name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
@@ -454,7 +447,7 @@ const FarmerListingsPage: React.FC = () => {
               <div className="w-24 h-24 bg-white rounded-[1.75rem] overflow-hidden border border-gray-100 shrink-0 shadow-sm relative group-hover:border-amber-100 transition-all">
                 {productToArchive?.p_image ? (
                   <img
-                    src={resolveImageUrl(productToArchive.p_image)}
+                    src={getFullImageUrl(productToArchive.p_image)}
                     alt={productToArchive.p_name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />

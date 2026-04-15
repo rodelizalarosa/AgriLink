@@ -5,16 +5,15 @@ import {
     Package, Clock, CheckCircle, Lock
 } from 'lucide-react';
 import Modal from './Modal';
-import { API_BASE_URL } from '../../api/apiConfig';
+import { API_BASE_URL, getFullImageUrl } from '../../api/apiConfig';
+import { useNavigate } from 'react-router-dom';
+import * as cartService from '../../services/cartService';
 
 interface ProductDetailModalProps {
     isOpen: boolean;
     onClose: () => void;
     product: any;
 }
-
-import { useNavigate } from 'react-router-dom';
-import * as cartService from '../../services/cartService';
 
 const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ isOpen, onClose, product }) => {
     const navigate = useNavigate();
@@ -37,14 +36,7 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ isOpen, onClose
     const currentUserId = localStorage.getItem('agrilink_id');
     const isOwner = currentUserId && ownerId && currentUserId.toString() === ownerId.toString();
 
-    const resolveImageUrl = (path: string) => {
-        if (!path) return '';
-        if (path.startsWith('http')) return path;
-        const baseUrl = API_BASE_URL.replace('/api', '');
-        return `${baseUrl}${path}`;
-    };
-
-    const imageUrl = resolveImageUrl(image);
+    const imageUrl = getFullImageUrl(image);
     const isLowStock = parseFloat(quantity) < 15;
 
     const handleAddToCart = () => {

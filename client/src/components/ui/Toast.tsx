@@ -64,31 +64,31 @@ export const ToastContainer: React.FC = () => {
                     key={toast.id}
                     className={`
             pointer-events-auto
-            flex items-center gap-4 min-w-[320px] max-w-[400px] p-3.5 pr-4 rounded-[1.25rem] shadow-[0_15px_40px_rgba(0,0,0,0.08)] border
+            flex items-center gap-4 min-w-[320px] max-w-[400px] p-5 pr-5 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.12)] border
             animate-in slide-in-from-right-6 duration-400 ease-out
-            ${toast.type === 'success' ? 'bg-white border-[#5ba409]/20' :
-                            toast.type === 'error' ? 'bg-white border-red-100' :
-                                'bg-white border-amber-100'}
+            ${toast.type === 'success' ? 'bg-white border-[#5ba409]/30' :
+                        toast.type === 'error' ? 'bg-white border-red-200' :
+                            'bg-white border-[#5ba409]/30'}
           `}
                 >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-[#5ba409]/10 text-[#5ba409]' :
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-[#5ba409]/10 text-[#5ba409]' :
                         toast.type === 'error' ? 'bg-red-50 text-red-500' :
-                            'bg-amber-50 text-amber-600'
+                            'bg-green-50 text-[#5ba409]'
                         }`}>
                         {toast.type === 'success' && <Leaf className="w-5 h-5" />}
                         {toast.type === 'error' && <XCircle className="w-5 h-5" />}
-                        {toast.type === 'info' && <AlertCircle className="w-5 h-5" />}
+                        {toast.type === 'info' && <Leaf className="w-5 h-5" />}
                     </div>
 
                     <div className="flex-1 min-w-0 py-1">
-                        <div className="flex items-center gap-1.5 mb-0.5 opacity-40">
-                            <span className={`text-[8px] font-black uppercase tracking-widest italic ${toast.type === 'success' ? 'text-[#5ba409]' :
-                                toast.type === 'error' ? 'text-red-500' : 'text-amber-600'
+                        <div className="flex items-center gap-1.5 mb-1 opacity-60">
+                            <span className={`text-[9px] font-black uppercase tracking-widest italic ${toast.type === 'success' ? 'text-[#5ba409]' :
+                                toast.type === 'error' ? 'text-red-500' : 'text-[#5ba409]'
                                 }`}>
-                                {toast.type === 'success' ? 'Confirmed' : toast.type === 'error' ? 'Alert' : 'Harvest Notice'}
+                                {toast.type === 'success' ? 'Confirmed' : toast.type === 'error' ? 'Alert' : 'Notice'}
                             </span>
                         </div>
-                        <p className="font-black text-[13px] italic uppercase tracking-tight text-gray-900 leading-tight">
+                        <p className="font-black text-[14px] italic uppercase tracking-tight text-gray-900 leading-tight">
                             {toast.message}
                         </p>
                     </div>

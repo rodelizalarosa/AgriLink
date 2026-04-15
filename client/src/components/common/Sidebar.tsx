@@ -3,11 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
-  Plus,
   ShoppingCart,
   Users,
-  ClipboardList,
-  BarChart2,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -17,12 +14,10 @@ import {
   FileText,
   Store,
   Map,
-  ShieldCheck,
   MessageSquare,
   Bell,
 } from 'lucide-react';
 import type { SidebarProps } from '../../types';
-import { sampleConversations, farmerNotifications, farmerOrders } from '../../data';
 import LogoutConfirmationModal from '../ui/LogoutConfirmationModal';
 
 // ─── Nav config ─────────────────────────────────────────────────────────────
@@ -62,7 +57,7 @@ const brgyNav = [
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-const Sidebar: React.FC<SidebarProps> = ({ userType, firstName, lastName, setUserType, collapsed, setCollapsed, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ userType, firstName, lastName, collapsed, setCollapsed, onLogout }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -103,6 +98,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, firstName, lastName, setUse
   const roleLabel = getRoleLabel();
   const roleColor = getRoleColor();
   const roleBg = getRoleBg();
+  const homeRoute = isFarmer ? '/farmer/dashboard' : isBrgy ? '/brgy/dashboard' : '/admin/dashboard';
 
   const handleLogoutClick = () => {
     setIsLogoutModalOpen(true);
@@ -122,7 +118,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userType, firstName, lastName, setUse
         className="flex items-center justify-center px-4 py-5 border-b border-gray-100"
         style={{ minHeight: '80px' }}
       >
-        <Link to="/" className="flex items-center gap-2 overflow-hidden">
+        <Link to={homeRoute} className="flex items-center gap-2 overflow-hidden">
           <img
             src="/src/assets/logo/AgriLinkGREEN.png"
             alt="AgriLink"

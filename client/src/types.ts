@@ -6,6 +6,7 @@ export interface Product {
   price: number;
   unit: string;
   seller: string;
+  sellerUserId?: number;
   location: string;
   stock: number;
   image: string;
@@ -25,6 +26,9 @@ export interface DashboardCardProps {
 export interface ProductCardProps {
   product: Product;
   onClick?: () => void;
+  viewMode?: 'grid' | 'list';
+  isFavorited?: boolean;
+  onToggleFavorite?: (productId: number, e: React.MouseEvent) => void;
 }
 
 export interface NavbarProps {
@@ -146,6 +150,7 @@ export interface UserProfile {
   // Farmer specific
   farmName?: string;
   farmSize?: string;
+  farmImage?: string;
   deliveryRange?: string;
   // Farm address (farmer only)
   farmAddress?: string;
@@ -186,4 +191,16 @@ export interface Notification {
   status: 'unread' | 'read';
   timestamp: string;
   link?: string;
+}
+
+export interface ProductReview {
+  id: number;
+  user_id: number;
+  product_id: number;
+  rating: number;
+  comment: string;
+  created_at: string;
+  first_name: string;
+  last_name: string;
+  city?: string;
 }

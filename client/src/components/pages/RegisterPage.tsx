@@ -84,6 +84,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
     if (!formData.lastName) newErrors.lastName = 'Last name is required' as any;
     if (!formData.email) newErrors.email = 'Email is required' as any;
     if (!formData.password) newErrors.password = 'Password is required' as any;
+    if (formData.password && formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters' as any;
+    }
     if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm your password' as any;
     if (formData.password !== formData.confirmPassword)
       newErrors.confirmPassword = 'Passwords do not match' as any;
@@ -114,8 +117,17 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        toast.error(data.message || 'Registration failed');
-        setErrors({ email: data.message || 'Registration failed' } as any);
+        const rawMessage = data?.message || 'Registration failed';
+        const lower = String(rawMessage).toLowerCase();
+        toast.error(rawMessage);
+
+        if (lower.includes('password')) {
+          setErrors({ password: rawMessage } as any);
+        } else if (lower.includes('email')) {
+          setErrors({ email: rawMessage } as any);
+        } else {
+          setErrors({ email: rawMessage } as any);
+        }
         return;
       }
 
@@ -326,6 +338,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
                   </button>
                 </div>
                 {errors.password && <p className="text-red-500 text-sm mt-1 font-semibold">{errors.password}</p>}
+                {!errors.password && <p className="text-gray-400 text-xs mt-1 font-medium">Minimum 8 characters</p>}
               </div>
 
               <div>

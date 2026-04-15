@@ -2,10 +2,11 @@ import { ShoppingCart, Menu, X, LogOut, User as UserIcon, MessageSquare, Bell, C
 import { Link, useNavigate } from 'react-router-dom';
 import type { NavbarProps } from '../../types';
 import { useState, useRef, useEffect } from 'react';
-import { buyerNotifications, farmerNotifications, sampleConversations } from '../../data';
 import LogoutConfirmationModal from '../ui/LogoutConfirmationModal';
+import { useMessaging } from '../../contexts/MessagingContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 
-const Navbar: React.FC<NavbarProps> = ({ userType, firstName, lastName, setUserType, isLoggedIn, onLogout }) => {
+const Navbar: React.FC<NavbarProps> = ({ userType, firstName, isLoggedIn, onLogout }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
@@ -13,14 +14,38 @@ const Navbar: React.FC<NavbarProps> = ({ userType, firstName, lastName, setUserT
   const notifRef = useRef<HTMLDivElement>(null);
   const msgRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { notifications, unreadCount: unreadNotifCount, markAllAsRead: markAllNotifsRead } = useNotifications();
+  const { conversations, unreadTotal: unreadMsgCount } = useMessaging();
+  const [cartCount, setCartCount] = useState(0);
+  const homeRoute = isLoggedIn
+    ? (userType.toLowerCase() === 'farmer'
+      ? '/farmer/dashboard'
+      : userType.toLowerCase() === 'admin'
+        ? '/admin/dashboard'
+        : userType.toLowerCase() === 'brgy_official'
+          ? '/brgy/dashboard'
+          : '/buyer/marketplace')
+    : '/';
+
+  useEffect(() => {
+    const updateCount = () => {
+      const cart = localStorage.getItem('agrilink_cart');
+      if (cart) {
+        const items = JSON.parse(cart) as Array<{ quantity?: number }>;
+        const count = items.reduce((acc: number, item) => acc + (item.quantity || 1), 0);
+        setCartCount(count);
+      } else {
+        setCartCount(0);
+      }
+    };
+    updateCount();
+    window.addEventListener('cart-updated', updateCount);
+    return () => window.removeEventListener('cart-updated', updateCount);
+  }, []);
 
   const isFarmer = userType.toLowerCase() === 'farmer';
-  const roleNotifications = isFarmer ? farmerNotifications : buyerNotifications;
-  const previewNotifications = roleNotifications.slice(0, 4);
-  const unreadNotifCount = roleNotifications.filter(n => n.status === 'unread').length;
-
-  const previewConversations = sampleConversations.slice(0, 4);
-  const unreadMsgCount = sampleConversations.reduce((acc, c) => acc + c.unreadCount, 0);
+  const previewNotifications = notifications.slice(0, 4);
+  const previewConversations = conversations.slice(0, 4);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -51,7 +76,7 @@ const Navbar: React.FC<NavbarProps> = ({ userType, firstName, lastName, setUserT
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
+          <Link to={homeRoute} className="flex items-center">
             <img src="/src/assets/logo/AgriLinkGREEN.png" alt="AgriLink Logo" className="w-16 h-16 object-contain transform hover:scale-105 transition-all" />
           </Link>
 
@@ -65,6 +90,11 @@ const Navbar: React.FC<NavbarProps> = ({ userType, firstName, lastName, setUserT
               {(userType.toLowerCase() === 'buyer' || !isLoggedIn) && (
                 <Link to="/buyer/cart" className="relative p-2 hover:bg-[#F9FBE7] rounded-full transition-colors block">
                   <ShoppingCart className="w-6 h-6 text-[#5ba409]" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-[#5ba409] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                      {cartCount}
+                    </span>
+                  )}
                 </Link>
               )}
 
@@ -175,7 +205,10 @@ const Navbar: React.FC<NavbarProps> = ({ userType, firstName, lastName, setUserT
                             </div>
                             <p className="text-[10px] font-bold text-gray-400">{unreadNotifCount} unread alert{unreadNotifCount !== 1 ? 's' : ''}</p>
                           </div>
-                          <button className="text-[10px] font-black text-green-600 flex items-center gap-1 hover:underline">
+                          <button 
+                            onClick={() => markAllNotifsRead()}
+                            className="text-[10px] font-black text-green-600 flex items-center gap-1 hover:underline cursor-pointer"
+                          >
                             <CheckCheck className="w-3.5 h-3.5" /> Mark all read
                           </button>
                         </div>
@@ -188,7 +221,10 @@ const Navbar: React.FC<NavbarProps> = ({ userType, firstName, lastName, setUserT
                               <button
                                 key={notif.id}
                                 className={`w-full text-left p-5 hover:bg-gray-50/80 transition-all flex items-start gap-4 ${notif.status === 'unread' ? 'bg-green-50/20' : ''}`}
-                                onClick={() => { setNotifOpen(false); notif.link && navigate(notif.link); }}
+                                onClick={() => {
+                                  setNotifOpen(false);
+                                  if (notif.link) navigate(notif.link);
+                                }}
                               >
                                 <div className={`shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm ${colorClass}`}>
                                   <IconComp className="w-5 h-5" />
@@ -211,7 +247,7 @@ const Navbar: React.FC<NavbarProps> = ({ userType, firstName, lastName, setUserT
                             onClick={() => { setNotifOpen(false); navigate('/notifications'); }}
                             className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-green-500/20"
                           >
-                            View All {isFarmer ? 'Farmer' : 'Buyer'} Notifications
+                            View All Notifications
                           </button>
                         </div>
                       </div>
@@ -226,16 +262,22 @@ const Navbar: React.FC<NavbarProps> = ({ userType, firstName, lastName, setUserT
                   <button onClick={() => navigate('/register')} className="border-2 border-[#5ba409] text-[#5ba409] hover:bg-[#5ba409] hover:text-white px-4 py-2 rounded-full font-semibold transition-colors">Register</button>
                 </>
               ) : (
-                <div className="flex items-center space-x-4 ml-4 pl-4 border-l-2 border-gray-100">
-                  <Link to="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-[#5ba409] transition-colors">
-                    <div className="bg-green-100 p-2 rounded-full">
-                      <UserIcon className="w-5 h-5 text-[#4CAF50]" />
+                <div className="flex items-center gap-6 ml-4 pl-6 border-l border-gray-100">
+                  <Link to="/profile" className="group flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center border border-green-100 group-hover:bg-[#5ba409] group-hover:text-white transition-all shadow-sm">
+                      <UserIcon size={18} className="transition-colors" />
                     </div>
-                    <span className="font-bold capitalize">{firstName || userType}</span>
+                    <div className="hidden lg:block text-left">
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Authenticated</p>
+                       <p className="text-sm font-bold text-gray-900 group-hover:text-[#5ba409] transition-colors leading-none capitalize">{firstName || userType}</p>
+                    </div>
                   </Link>
-                  <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center space-x-1 text-red-500 hover:text-red-600 font-bold transition-colors">
-                    <LogOut className="w-5 h-5" />
-                    <span>Logout</span>
+                  <button 
+                    onClick={() => setIsLogoutModalOpen(true)} 
+                    className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                    title="Terminate Session"
+                  >
+                    <LogOut size={20} />
                   </button>
                 </div>
               )}
@@ -251,8 +293,8 @@ const Navbar: React.FC<NavbarProps> = ({ userType, firstName, lastName, setUserT
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden pb-4 space-y-2 animate-fadeIn">
-            <Link to="/marketplace" onClick={() => setMobileMenuOpen(false)} className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold block">Marketplace</Link>
-            <Link to="/map" onClick={() => setMobileMenuOpen(false)} className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold block">Maps</Link>
+            <Link to="/buyer/marketplace" onClick={() => setMobileMenuOpen(false)} className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold block">Marketplace</Link>
+            <Link to="/buyer/map" onClick={() => setMobileMenuOpen(false)} className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold block">Maps</Link>
             <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold block">About</Link>
 
             {isLoggedIn && (
@@ -267,6 +309,9 @@ const Navbar: React.FC<NavbarProps> = ({ userType, firstName, lastName, setUserT
                     {isFarmer ? 'Farmer Alerts' : 'My Notifications'}
                   </span>
                   {unreadNotifCount > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black">{unreadNotifCount}</span>}
+                </Link>
+                <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F9FBE7] font-semibold flex items-center gap-3">
+                  <UserIcon className="w-5 h-5 text-green-600" /> Profile
                 </Link>
               </>
             )}

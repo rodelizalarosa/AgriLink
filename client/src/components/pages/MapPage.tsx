@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Navigation, Search, Info, Map as MapIcon, ChevronRight, Phone, Clock, Star, Lock, User } from 'lucide-react';
+import { MapPin, Navigation, Search, Info, Map as MapIcon, ChevronRight, Phone, Clock, Star, Lock, User, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
